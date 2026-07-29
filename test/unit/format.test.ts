@@ -149,3 +149,117 @@ test("assignment alignment is opt-in", () => {
 	assert.ok(!formatText(src).includes("assign a   = 1;"));
 	assert.ok(formatText(src, { alignAssignments: true }).includes("assign a   = 1;"));
 });
+
+test("a begin block starting on the next line aligns with its head", () => {
+	const src = "module m;\nalways @(*)\nbegin\ny = a;\nend\nendmodule\n";
+	const out = formatText(src).split("\n");
+	assert.equal(out[1], "    always @(*)");
+	assert.equal(out[2], "    begin");
+	assert.equal(out[3], "        y = a;");
+	assert.equal(out[4], "    end");
+	assert.equal(out[5], "endmodule");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
+
+test("a next-line begin with an else-if chain formats cleanly (regression)", () => {
+	const src = [
+		"module m;",
+		"always@(posedge clk or negedge rst)",
+		"begin",
+		"if (~rst) q <= 0;",
+		"else if (en) q <= d;",
+		"else q <= q;",
+		"end",
+		"endmodule",
+	].join("\n");
+	const out = formatText(src).split("\n");
+	assert.equal(out[1], "    always @(posedge clk or negedge rst)");
+	assert.equal(out[2], "    begin");
+	assert.equal(out[3], "        if (~rst) q <= 0;");
+	assert.equal(out[4], "        else if (en) q <= d;");
+	assert.equal(out[5], "        else q <= q;");
+	assert.equal(out[6], "    end");
+	assert.equal(out[7], "endmodule");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
+
+test("a nested head followed by a next-line begin stays aligned", () => {
+	const src = "module m;\nalways @(*) begin\nif (x)\nbegin\ny = 1;\nend\nend\nendmodule\n";
+	const out = formatText(src).split("\n");
+	assert.equal(out[2], "        if (x)");
+	assert.equal(out[3], "        begin");
+	assert.equal(out[4], "            y = 1;");
+	assert.equal(out[5], "        end");
+	assert.equal(out[6], "    end");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
+
+test("a genuine single-statement body is still indented", () => {
+	const src = "module m;\nalways @(*)\nif (x) y = a;\nendmodule\n";
+	const out = formatText(src).split("\n");
+	assert.equal(out[2], "        if (x) y = a;");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
+
+test("always@ is normalised to always @", () => {
+	const out = formatText("module m;\nalways@(posedge clk) q <= d;\nendmodule\n");
+	assert.ok(out.includes("    always @(posedge clk) q <= d;"));
+});
+
+test("alignIfElse column-aligns single-statement if/else bodies", () => {
+	const src =
+		"module m;\nalways @(*) begin\nif (a) y = 1;\nelse if (bb) y = 2;\nelse y = 3;\nend\nendmodule\n";
+	const opts = { alignIfElse: true };
+	const out = formatText(src, opts).split("\n");
+	assert.equal(out[2], "        if (a)       y = 1;");
+	assert.equal(out[3], "        else if (bb) y = 2;");
+	assert.equal(out[4], "        else         y = 3;");
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
+});
+
+test("alignIfElse leaves begin/end branches with normal indentation", () => {
+	const src =
+		"module m;\nalways @(*) begin\nif (a) begin\ny = 1;\nend\nelse begin\ny = 2;\nend\nend\nendmodule\n";
+	const out = formatText(src, { alignIfElse: true }).split("\n");
+	assert.equal(out[2], "        if (a) begin");
+	assert.equal(out[3], "            y = 1;");
+	assert.equal(out[4], "        end");
+	assert.equal(out[5], "        else begin");
+});
+
+test("joinBegin merges a lone begin onto its control head", () => {
+	const src = "module m;\nalways @(*)\nbegin\ny = a;\nend\nendmodule\n";
+	const opts = { joinBegin: true };
+	const out = formatText(src, opts).split("\n");
+	assert.equal(out[1], "    always @(*) begin");
+	assert.equal(out[2], "        y = a;");
+	assert.equal(out[3], "    end");
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
+});
+
+test("joinBegin skips a begin that carries a trailing comment", () => {
+	const src = "module m;\nalways @(*)\nbegin // keep\ny = a;\nend\nendmodule\n";
+	const out = formatText(src, { joinBegin: true }).split("\n");
+	assert.equal(out[2], "    begin // keep");
+});
+
+test("joinBegin + alignIfElse reproduce the compact aligned style", () => {
+	const src = [
+		"module m;",
+		"always @(posedge clk or negedge rst)",
+		"begin",
+		"if (~rst) lfsr <= 31'h0;",
+		"else if (key_en) lfsr <= {k1, k2};",
+		"else lfsr <= lfsr;",
+		"end",
+		"endmodule",
+	].join("\n");
+	const opts = { joinBegin: true, alignIfElse: true };
+	const out = formatText(src, opts).split("\n");
+	assert.equal(out[1], "    always @(posedge clk or negedge rst) begin");
+	assert.equal(out[2], "        if (~rst)        lfsr <= 31'h0;");
+	assert.equal(out[3], "        else if (key_en) lfsr <= {k1, k2};");
+	assert.equal(out[4], "        else             lfsr <= lfsr;");
+	assert.equal(out[5], "    end");
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
+});

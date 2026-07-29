@@ -13,10 +13,19 @@ This project follows [Semantic Versioning](https://semver.org/).
   external toolchain. The scanner now records the column of each declared name
   for precise jumps, and a new `outlineFile()` groups symbols under their
   enclosing module.
+- **Formatter, opt-in** — `verilite.format.joinBegin` merges a lone `begin` line
+  up onto its control head (`always @(...) begin`), and
+  `verilite.format.alignIfElse` column-aligns the bodies of consecutive
+  single-statement `if` / `else if` / `else` branches (branches that use
+  `begin`/`end` keep the normal indentation). Both default to off.
 - `repository` / `bugs` fields in `package.json` (placeholder URLs — replace
   before publishing).
 
 ### Fixed
+- **Formatter** — a `begin`/`end` block whose head (`always @(...)`, `if (...)`,
+  `else`, ...) sat on the previous line no longer collapses the indent of the
+  block body and its `else` chain; `end` now aligns with `begin`. Also normalises
+  `always@(` to `always @(`.
 - `snippets/verilog.json` contained a stray control character (a literal tab
   inside `"TOD<TAB>O 注释"`) that made it invalid strict JSON. Corrected to
   `"TODO 注释"`.
@@ -30,8 +39,8 @@ This project follows [Semantic Versioning](https://semver.org/).
   box. The stale root `.vsix` is no longer committed.
 
 ### Changed
-- Unit tests: 56 → 61 (outline grouping, multi-module, loose symbols, name
-  columns).
+- Unit tests: 56 → 71 (outline grouping, multi-module, loose symbols, name
+  columns, next-line-`begin` indentation, `joinBegin`, `alignIfElse`).
 
 ## [0.1.0] - 2026-07-27
 

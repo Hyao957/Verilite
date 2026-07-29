@@ -1,6 +1,7 @@
 import { lex } from "../../core/lexer";
+import type { Token } from "../../core/types";
 import { applyAlignment } from "./align";
-import { planIndent } from "./indent";
+import { planIndent, SINGLE_STATEMENT_HEADS } from "./indent";
 import { applySpacing } from "./spacing";
 import { DEFAULT_FORMAT_OPTIONS, indentUnit } from "./types";
 import type { FormatOptions } from "./types";
@@ -8,6 +9,44 @@ import type { FormatOptions } from "./types";
 export type { FormatOptions } from "./types";
 export { DEFAULT_FORMAT_OPTIONS } from "./types";
 export { planIndent } from "./indent";
+
+/** True when a code line is a control head whose body may absorb a following `begin`. */
+function lineIsControlHead(toks: Token[]): boolean {
+	if (toks.length === 0) return false;
+	const first = toks[0];
+	const last = toks[toks.length - 1];
+	if (last.lower === "else" || last.lower === "forever" || last.lower === "initial") return true;
+	return last.text === ")" && SINGLE_STATEMENT_HEADS.has(first.lower);
+}
+
+/**
+ * Merge a `begin` that sits alone on its line up onto the preceding control
+ * head, turning `always @(...)\nbegin` into `always @(...) begin`.
+ *
+ * Only a plain `begin` line (no label, no trailing comment) directly below a
+ * paren-balanced head is touched, so the transform is conservative. It strictly
+ * reduces the number of lone `begin` lines, hence it terminates and idempotent.
+ */
+function joinBegin(text: string): string {
+	const lexed = lex(text);
+	const raw = lexed.rawLines.slice();
+	const remove = new Set<number>();
+
+	for (let i = 1; i < raw.length; i++) {
+		if (lexed.lineKinds[i] !== "code") continue;
+		if (lexed.maskedLines[i].trim() !== "begin" || raw[i].trim() !== "begin") continue;
+		const j = i - 1;
+		if (remove.has(j)) continue;
+		if (lexed.lineKinds[j] !== "code") continue;
+		if ((lexed.parenDepthAtLineStart[i] ?? 0) !== 0) continue;
+		if (!lineIsControlHead(lexed.tokensByLine[j] ?? [])) continue;
+		raw[j] = raw[j].replace(/\s+$/, "") + " begin";
+		remove.add(i);
+	}
+
+	if (remove.size === 0) return text;
+	return raw.filter((_, idx) => !remove.has(idx)).join("\n");
+}
 
 /**
  * Format a whole Verilog document.
@@ -26,6 +65,14 @@ export function formatText(
 	startLevel = 0,
 ): string {
 	const opts: FormatOptions = { ...DEFAULT_FORMAT_OPTIONS, ...options };
+
+	// pass 0 (opt-in): join a lone `begin` up onto its control head, then
+	// re-format the merged text. joinBegin is idempotent, so this recurses once.
+	if (opts.joinBegin) {
+		const joined = joinBegin(text);
+		if (joined !== text) return formatText(joined, options, startLevel);
+	}
+
 	const lexed = lex(text);
 	const plan = planIndent(lexed, startLevel);
 
@@ -54,7 +101,7 @@ export function formatText(
 
 	// ---- pass 3: alignment ----------------------------------------------
 	let aligned = spaced;
-	if (opts.alignPorts || opts.alignAssignments) {
+	if (opts.alignPorts || opts.alignAssignments || opts.alignIfElse) {
 		const relexed = lex(spaced.join("\n"));
 		const commentStarts = spaced.map((line, i) => {
 			const ranges = relexed.protectedRanges[i] ?? [];
@@ -67,8 +114,10 @@ export function formatText(
 		aligned = applyAlignment({
 			lines: spaced,
 			commentStarts,
+			tokensByLine: relexed.tokensByLine,
 			alignPorts: opts.alignPorts,
 			alignAssignments: opts.alignAssignments,
+			alignIfElse: opts.alignIfElse,
 		});
 	}
 

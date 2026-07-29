@@ -79,6 +79,20 @@ output reg  [ 7:0] data_out
 The formatter is **idempotent** — `format(format(x)) === format(x)` is enforced
 by a unit test.
 
+Two opt-in style options (off by default):
+
+| Setting | Effect |
+| --- | --- |
+| `verilite.format.joinBegin` | merge a lone `begin` line up onto its control head: `always @(...)` ⏎ `begin` → `always @(...) begin` |
+| `verilite.format.alignIfElse` | column-align the bodies of consecutive single-statement `if` / `else if` / `else` branches. Branches that use `begin`/`end` keep the normal indentation. |
+
+```verilog
+// alignIfElse
+if (~rst)         lfsr <= 31'h0;
+else if (key_en)  lfsr <= {k1, k2};
+else              lfsr <= lfsr;
+```
+
 ### 6. Navigation
 - **Document outline** — modules appear as top-level nodes with their ports,
   parameters and internal signals nested underneath. Drives the Outline view,

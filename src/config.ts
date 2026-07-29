@@ -44,6 +44,8 @@ export function readConfig(resource?: vscode.Uri): VeriLiteConfig {
 			alignPorts: c.get<boolean>("format.alignPorts", true),
 			alignAssignments: c.get<boolean>("format.alignAssignments", false),
 			spaceAroundOperators: c.get<boolean>("format.spaceAroundOperators", true),
+			joinBegin: c.get<boolean>("format.joinBegin", false),
+			alignIfElse: c.get<boolean>("format.alignIfElse", false),
 		},
 		completionEnabled: c.get<boolean>("completion.enable", true),
 		completionIncludeSystemTasks: c.get<boolean>("completion.includeSystemTasks", true),
