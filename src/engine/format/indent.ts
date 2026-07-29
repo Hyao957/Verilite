@@ -13,10 +13,27 @@ function isCloserToken(text: string, lower: string): boolean {
 }
 
 /**
+ * True when the next code line (skipping blanks, comments and directives)
+ * begins with a `begin`/`fork` block. Used to tell a genuine single-statement
+ * body apart from a block body that simply starts on the following line.
+ */
+function nextCodeLineStartsBlock(lexed: LexResult, from: number): boolean {
+	for (let n = from; n < lexed.maskedLines.length; n++) {
+		const k = lexed.lineKinds[n];
+		if (k === "blank" || k === "comment" || k === "directive") continue;
+		const toks = lexed.tokensByLine[n];
+		if (!toks || toks.length === 0) continue;
+		const lw = toks[0].lower;
+		return lw === "begin" || lw === "fork";
+	}
+	return false;
+}
+
+/**
  * Statement heads that indent a following single statement when they are not
  * followed by `begin`.
  */
-const SINGLE_STATEMENT_HEADS = new Set([
+export const SINGLE_STATEMENT_HEADS = new Set([
 	"if", "else", "for", "while", "repeat",
 	"always", "always_ff", "always_comb", "always_latch",
 ]);
@@ -128,14 +145,18 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 			level = Math.max(0, singleStack.pop() as number);
 		}
 
-		// `if (...)` / `else` / `for (...)` with no `begin` indents one statement
+		// `if (...)` / `else` / `for (...)` with no `begin` indents one statement.
+		// But when the body is actually a `begin`/`fork` block on the next line,
+		// the block manages its own indent, so we must NOT enter single-statement
+		// mode here - otherwise the stale entry collapses the whole block.
 		const opensSingleStatement =
 			depthAtEnd === 0 &&
 			opens === closes &&
 			((last.text === ")" && SINGLE_STATEMENT_HEADS.has(first.lower)) ||
 				last.lower === "else" ||
 				last.lower === "forever" ||
-				last.lower === "initial");
+				last.lower === "initial") &&
+			!nextCodeLineStartsBlock(lexed, i + 1);
 
 		if (opensSingleStatement) {
 			singleStack.push(level);

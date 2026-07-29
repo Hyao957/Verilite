@@ -40,6 +40,9 @@ function normalizeCode(text: string, spaceAroundOperators: boolean): string {
 	out = out.replace(/[ \t]+;/g, ";");
 	out = out.replace(/;(?=[^\s;])/g, "; ");
 	out = out.replace(KEYWORD_PAREN_RE, "$1 (");
+	// `always@(` -> `always @(`. The `@` is unambiguous (sensitivity / event),
+	// unlike the operators we deliberately leave alone.
+	out = out.replace(/\b(always|always_ff|always_comb|always_latch)\b[ \t]*@/g, "$1 @");
 	out = out.replace(/[ \t]{2,}/g, " ");
 	return out;
 }
