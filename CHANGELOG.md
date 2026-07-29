@@ -26,6 +26,11 @@ This project follows [Semantic Versioning](https://semver.org/).
   `else`, ...) sat on the previous line no longer collapses the indent of the
   block body and its `else` chain; `end` now aligns with `begin`. Also normalises
   `always@(` to `always @(`.
+- **Formatter** — a single-statement head whose body is a whole `case ... endcase`
+  (e.g. `else` ⏎ `case (s)`) no longer collapses at the first inner `;`; the
+  single-statement dedent is now block-depth aware. Case labels ending in `:` are
+  also no longer mistaken for a continued expression, so a label's `begin`/`end`
+  block aligns correctly.
 - `snippets/verilog.json` contained a stray control character (a literal tab
   inside `"TOD<TAB>O 注释"`) that made it invalid strict JSON. Corrected to
   `"TODO 注释"`.
@@ -39,8 +44,9 @@ This project follows [Semantic Versioning](https://semver.org/).
   box. The stale root `.vsix` is no longer committed.
 
 ### Changed
-- Unit tests: 56 → 71 (outline grouping, multi-module, loose symbols, name
-  columns, next-line-`begin` indentation, `joinBegin`, `alignIfElse`).
+- Unit tests: 56 → 73 (outline grouping, multi-module, loose symbols, name
+  columns, next-line-`begin` indentation, `joinBegin`, `alignIfElse`,
+  `else`-with-`case` body, case-label blocks).
 
 ## [0.1.0] - 2026-07-27
 

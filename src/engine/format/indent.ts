@@ -59,8 +59,13 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 	let level = startLevel;
 	let pendingModuleHeader = false;
 	let hanging = 0;
-	/** levels to return to when a single-statement body finishes */
-	const singleStack: number[] = [];
+	/** running depth of block keywords (begin/case/fork/...), excluding parens */
+	let blockDepth = 0;
+	/**
+	 * Single-statement bodies pending close: the level to return to, and the
+	 * block depth at which each was opened.
+	 */
+	const singleStack: Array<{ level: number; blockDepth: number }> = [];
 
 	for (let i = 0; i < lexed.maskedLines.length; i++) {
 		if (lexed.lineStartsInBlockComment[i]) {
@@ -96,6 +101,8 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 		let closes = 0;
 		let extraAfter = 0;
 		let parens = 0;
+		let blockOpens = 0;
+		let blockCloses = 0;
 
 		for (let k = 0; k < toks.length; k++) {
 			const t = toks[k];
@@ -125,8 +132,13 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 				continue;
 			}
 			if (t.lower === "fork" && (prev === "disable" || prev === "wait")) continue;
-			if (INDENT_OPENERS.has(t.lower)) opens++;
-			else if (INDENT_CLOSERS.has(t.lower)) closes++;
+			if (INDENT_OPENERS.has(t.lower)) {
+				opens++;
+				blockOpens++;
+			} else if (INDENT_CLOSERS.has(t.lower)) {
+				closes++;
+				blockCloses++;
+			}
 		}
 
 		const first = toks[0];
@@ -135,14 +147,25 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 
 		const statementTerminated = last.text === ";" && depthAtEnd === 0;
 		const netDedent = closes > opens;
+		// A trailing `:` is a case label (branch body on the next line), not a
+		// continued expression, so it must not trigger a hanging indent.
 		const continues =
-			depthAtEnd === 0 && (last.text === "," || last.kind === "operator");
+			depthAtEnd === 0 &&
+			(last.text === "," || (last.kind === "operator" && last.text !== ":"));
 
 		level = Math.max(0, level + opens - closes + extraAfter);
+		blockDepth = Math.max(0, blockDepth + blockOpens - blockCloses);
 
-		// a finished statement or a closing block ends one single-statement body
-		if ((statementTerminated || netDedent) && singleStack.length > 0) {
-			level = Math.max(0, singleStack.pop() as number);
+		// A single-statement body ends only once we are back at the block depth it
+		// was opened at. Without the depth check, the first `;` inside a nested
+		// `begin`/`case` block (e.g. `else case (s) ... endcase`) would close the
+		// body early and collapse everything that follows.
+		while (
+			singleStack.length > 0 &&
+			blockDepth <= singleStack[singleStack.length - 1].blockDepth &&
+			(statementTerminated || netDedent)
+		) {
+			level = Math.max(0, (singleStack.pop() as { level: number }).level);
 		}
 
 		// `if (...)` / `else` / `for (...)` with no `begin` indents one statement.
@@ -159,7 +182,7 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 			!nextCodeLineStartsBlock(lexed, i + 1);
 
 		if (opensSingleStatement) {
-			singleStack.push(level);
+			singleStack.push({ level, blockDepth });
 			level += 1;
 		}
 

@@ -267,3 +267,29 @@ test("joinBegin + alignIfElse reproduce the compact aligned style", () => {
 	assert.equal(out[5], "    end");
 	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
 });
+
+test("an else whose body is a case block keeps the whole case indented", () => {
+	const src =
+		"module m;\nalways @(*) begin\nif (c) y = 1;\nelse\ncase (s)\na: y = 2;\ndefault: y = 3;\nendcase\nend\nendmodule\n";
+	const out = formatText(src).split("\n");
+	assert.equal(out[3], "        else");
+	assert.equal(out[4], "            case (s)");
+	assert.equal(out[5], "                a: y = 2;");
+	assert.equal(out[6], "                default: y = 3;");
+	assert.equal(out[7], "            endcase");
+	assert.equal(out[8], "    end");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
+
+test("case labels with next-line begin/end blocks stay aligned", () => {
+	const src =
+		"module m;\nalways @(*) case (s)\na:\nbegin\ny = 1;\nend\nb:\nbegin\ny = 2;\nend\nendcase\nendmodule\n";
+	const out = formatText(src).split("\n");
+	assert.equal(out[2], "        a:");
+	assert.equal(out[3], "        begin");
+	assert.equal(out[4], "            y = 1;");
+	assert.equal(out[5], "        end");
+	assert.equal(out[6], "        b:");
+	assert.equal(out[10], "    endcase");
+	assert.equal(formatText(formatText(src)), formatText(src));
+});
