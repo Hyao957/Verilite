@@ -2,7 +2,7 @@
   "name": "verilite",
   "displayName": "VeriLite - Verilog Support",
   "description": "Verilog editing, zero setup. Syntax highlighting, snippets, completion, lightweight error checking and formatting - with no external toolchain required.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "publisher",
   "license": "MIT",
   "icon": "images/icon.png",

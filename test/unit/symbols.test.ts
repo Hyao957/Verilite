@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { lex } from "../../src/core/lexer";
-import { firstModuleName, scanSymbols } from "../../src/engine/symbols";
+import { firstModuleName, outlineFile, scanSymbols } from "../../src/engine/symbols";
 
 const SRC = [
 	"module fifo #(",
@@ -47,4 +47,45 @@ test("duplicates are removed", () => {
 test("symbols in comments are ignored", () => {
 	const names = scanSymbols("module m;\n// wire ghost;\nendmodule").map((s) => s.name);
 	assert.ok(!names.includes("ghost"));
+});
+
+test("symbols carry the column of the declared name", () => {
+	const symbols = scanSymbols("module m;\n  wire data;\nendmodule\n");
+	const data = symbols.find((s) => s.name === "data")!;
+	// "  wire data;" -> 'data' starts at column 7
+	assert.equal(data.col, 7);
+});
+
+test("outlineFile groups members under their module", () => {
+	const outline = outlineFile(lex(SRC));
+	assert.equal(outline.modules.length, 1);
+	const m = outline.modules[0];
+	assert.equal(m.name, "fifo");
+	assert.equal(m.endLine, 10); // the `endmodule` line
+	const memberNames = m.members.map((s) => s.name);
+	for (const n of ["clk", "rst_n", "din", "dout", "DEPTH", "head", "tail", "empty"]) {
+		assert.ok(memberNames.includes(n), `expected member ${n}`);
+	}
+	assert.equal(outline.loose.length, 0);
+});
+
+test("outlineFile handles multiple modules", () => {
+	const src = "module a;\n  wire x;\nendmodule\nmodule b;\n  wire y;\nendmodule\n";
+	const outline = outlineFile(lex(src));
+	assert.deepEqual(outline.modules.map((m) => m.name), ["a", "b"]);
+	assert.deepEqual(outline.modules[0].members.map((s) => s.name), ["x"]);
+	assert.deepEqual(outline.modules[1].members.map((s) => s.name), ["y"]);
+});
+
+test("outlineFile puts stray symbols in loose", () => {
+	const src = "wire stray;\nmodule a;\n  wire x;\nendmodule\n";
+	const outline = outlineFile(lex(src));
+	assert.deepEqual(outline.loose.map((s) => s.name), ["stray"]);
+	assert.deepEqual(outline.modules[0].members.map((s) => s.name), ["x"]);
+});
+
+test("outlineFile does not crash on an unclosed module", () => {
+	const outline = outlineFile(lex("module a;\n  wire x;\n"));
+	assert.equal(outline.modules.length, 1);
+	assert.deepEqual(outline.modules[0].members.map((s) => s.name), ["x"]);
 });

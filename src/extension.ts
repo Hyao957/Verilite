@@ -3,6 +3,7 @@ import { registerCommands } from "./features/commands";
 import { registerCompletion } from "./features/completion";
 import { DiagnosticsController } from "./features/diagnostics";
 import { registerFormatter } from "./features/formatter";
+import { registerNavigation } from "./features/navigation";
 
 let diagnostics: DiagnosticsController | undefined;
 
@@ -13,6 +14,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		diagnostics,
 		registerCompletion(),
 		...registerFormatter(),
+		...registerNavigation(),
 		...registerCommands(diagnostics),
 	);
 

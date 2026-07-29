@@ -9,7 +9,7 @@ runs in-process in TypeScript.
 
 ---
 
-## Features (v0.1)
+## Features
 
 ### 1. Syntax highlighting
 TextMate grammar for `.v`, `.vh` and `.vl` covering keywords, data types, sized
@@ -34,13 +34,14 @@ literals (`8'hFF`, `4'b10x1`), system tasks (`$display`), compiler directives
 | Compiler directives (after a backtick) | Reference |
 | Module name in the current file | Module |
 | Ports / parameters / internal signals | Variable / Constant / Field |
-| 14 snippets | Snippet |
+| 48 snippets | Snippet |
 
 Completion never fires inside a comment or a string literal, and local symbols
 sort above generic keywords.
 
-**Snippets:** `module` `always_ff` `always_comb` `case` `ifelse` `for` `genfor`
-`function` `task` `fsm` `header` `inst` `timescale` `guard`
+**Snippets (48):** `module` `always_ff` `always_comb` `case` `ifelse` `for`
+`genfor` `function` `task` `fsm` `header` `inst` `timescale` `guard` `tb` `sync2`
+`handshake` `mem` `pipe` … and more.
 
 ### 4. Error checking
 All checks are heuristic and text-based — VeriLite is a *linter*, not a
@@ -77,6 +78,18 @@ output reg  [ 7:0] data_out
 
 The formatter is **idempotent** — `format(format(x)) === format(x)` is enforced
 by a unit test.
+
+### 6. Navigation
+- **Document outline** — modules appear as top-level nodes with their ports,
+  parameters and internal signals nested underneath. Drives the Outline view,
+  breadcrumbs and the `Ctrl+Shift+O` / `@:` go-to-symbol pickers.
+- **Go to Definition** — `F12` on a port, signal, parameter or module name jumps
+  to its declaration *within the current file*.
+- **Hover** — shows a symbol's declaration (`input wire [31:0] din`) and the
+  line it is defined on; keywords get a short one-liner.
+
+All three reuse the single-file symbol scanner, so they need no configuration
+and no external toolchain. Cross-file navigation is not implemented yet.
 
 ---
 
@@ -134,6 +147,7 @@ src/
     completion.ts
     diagnostics.ts
     formatter.ts
+    navigation.ts       outline / go-to-definition / hover
     commands.ts
 ```
 
@@ -178,7 +192,8 @@ solving it once at the bottom of the stack removes it from every rule above.
 
 ## Known limitations
 
-- Single-file analysis only. No cross-file module index, no go-to-definition.
+- Single-file analysis only. The outline, go-to-definition and hover work
+  within the current file; there is no cross-file module index yet.
 - Verilog-2001 oriented. SystemVerilog constructs highlight, but are not
   deeply understood by the checker.
 - The checker is heuristic. It is tuned to avoid false positives, so it will
@@ -190,9 +205,9 @@ solving it once at the bottom of the stack removes it from every rule above.
 
 | Version | Scope |
 | --- | --- |
-| v0.1 | zero-dependency basics (this release) |
-| v0.2 | symbol navigation, `begin`-`end` highlighting, hover port list |
-| v0.3 | cross-file module index, go to definition, instantiation generation |
+| v0.1 | zero-dependency basics: highlighting, snippets, completion, lint, format |
+| v0.2 | single-file navigation: outline, go to definition, hover (this release) |
+| v0.3 | cross-file module index, instantiation generation, `begin`-`end` highlighting |
 | v0.4 | optional external tools: iverilog / verilator / verible |
 | v0.5 | move analysis into a language server |
 | v1.0 | full SystemVerilog support |

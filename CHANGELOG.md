@@ -3,6 +3,36 @@
 All notable changes to VeriLite are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-07-29
+
+### Added
+- **Navigation** — a document outline (modules as top-level nodes with their
+  ports, parameters and internal signals nested underneath), same-file
+  **Go to Definition** (`F12`) and **Hover** summaries. All three reuse the
+  existing single-file symbol scanner, so they need no configuration and no
+  external toolchain. The scanner now records the column of each declared name
+  for precise jumps, and a new `outlineFile()` groups symbols under their
+  enclosing module.
+- `repository` / `bugs` fields in `package.json` (placeholder URLs — replace
+  before publishing).
+
+### Fixed
+- `snippets/verilog.json` contained a stray control character (a literal tab
+  inside `"TOD<TAB>O 注释"`) that made it invalid strict JSON. Corrected to
+  `"TODO 注释"`.
+- The completion provider now disposes its document-close listener instead of
+  leaking it for the extension's lifetime.
+- Removed a dead, commented-out duplicate of the completion `makeItem` helper.
+- `VeriLite: Clear All Diagnostics` now only appears in the command palette for
+  Verilog files, matching the other commands.
+- Packaging: `.claude/` and `*.vsix` are excluded from the bundle, and
+  `@vscode/vsce` is now a dev dependency so `npm run package` works out of the
+  box. The stale root `.vsix` is no longer committed.
+
+### Changed
+- Unit tests: 56 → 61 (outline grouping, multi-module, loose symbols, name
+  columns).
+
 ## [0.1.0] - 2026-07-27
 
 First release. Zero external dependencies.
@@ -18,7 +48,7 @@ First release. Zero external dependencies.
   directives (after a backtick), plus the module name, ports, parameters and
   internal signals declared in the current file. Suppressed inside comments
   and strings. Results cached per document version.
-- **Snippets** — 14 templates including a three-process FSM, a file header
+- **Snippets** — 48 templates including a three-process FSM, a file header
   block and a module instantiation skeleton.
 - **Error checking** — 5 error rules, 4 warning rules and 1 hint rule, all
   running on a masked mirror of the source so comments and strings can never
