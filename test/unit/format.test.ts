@@ -151,17 +151,20 @@ test("assignment alignment is opt-in", () => {
 });
 
 test("a begin block starting on the next line aligns with its head", () => {
+	// joinBegin off: the standalone `begin` is kept and aligned with its head
+	const opts = { joinBegin: false, alignIfElse: false };
 	const src = "module m;\nalways @(*)\nbegin\ny = a;\nend\nendmodule\n";
-	const out = formatText(src).split("\n");
+	const out = formatText(src, opts).split("\n");
 	assert.equal(out[1], "    always @(*)");
 	assert.equal(out[2], "    begin");
 	assert.equal(out[3], "        y = a;");
 	assert.equal(out[4], "    end");
 	assert.equal(out[5], "endmodule");
-	assert.equal(formatText(formatText(src)), formatText(src));
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
 });
 
 test("a next-line begin with an else-if chain formats cleanly (regression)", () => {
+	const opts = { joinBegin: false, alignIfElse: false };
 	const src = [
 		"module m;",
 		"always@(posedge clk or negedge rst)",
@@ -172,7 +175,7 @@ test("a next-line begin with an else-if chain formats cleanly (regression)", () 
 		"end",
 		"endmodule",
 	].join("\n");
-	const out = formatText(src).split("\n");
+	const out = formatText(src, opts).split("\n");
 	assert.equal(out[1], "    always @(posedge clk or negedge rst)");
 	assert.equal(out[2], "    begin");
 	assert.equal(out[3], "        if (~rst) q <= 0;");
@@ -180,18 +183,19 @@ test("a next-line begin with an else-if chain formats cleanly (regression)", () 
 	assert.equal(out[5], "        else q <= q;");
 	assert.equal(out[6], "    end");
 	assert.equal(out[7], "endmodule");
-	assert.equal(formatText(formatText(src)), formatText(src));
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
 });
 
 test("a nested head followed by a next-line begin stays aligned", () => {
+	const opts = { joinBegin: false, alignIfElse: false };
 	const src = "module m;\nalways @(*) begin\nif (x)\nbegin\ny = 1;\nend\nend\nendmodule\n";
-	const out = formatText(src).split("\n");
+	const out = formatText(src, opts).split("\n");
 	assert.equal(out[2], "        if (x)");
 	assert.equal(out[3], "        begin");
 	assert.equal(out[4], "            y = 1;");
 	assert.equal(out[5], "        end");
 	assert.equal(out[6], "    end");
-	assert.equal(formatText(formatText(src)), formatText(src));
+	assert.equal(formatText(formatText(src, opts), opts), formatText(src, opts));
 });
 
 test("a genuine single-statement body is still indented", () => {

@@ -16,8 +16,8 @@ export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
 	alignPorts: true,
 	alignAssignments: false,
 	spaceAroundOperators: true,
-	joinBegin: false,
-	alignIfElse: false,
+	joinBegin: true,
+	alignIfElse: true,
 };
 
 export function indentUnit(options: FormatOptions, level: number): string {
