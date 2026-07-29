@@ -1,0 +1,249 @@
+{
+  "name": "verilite",
+  "displayName": "VeriLite - Verilog Support",
+  "description": "Verilog editing, zero setup. Syntax highlighting, snippets, completion, lightweight error checking and formatting - with no external toolchain required.",
+  "version": "0.1.0",
+  "publisher": "publisher",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-name/verilite-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-name/verilite-vscode/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters",
+    "Snippets"
+  ],
+  "keywords": [
+    "verilog",
+    "systemverilog",
+    "hdl",
+    "fpga",
+    "rtl"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:verilog"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "verilog",
+        "aliases": [
+          "Verilog",
+          "verilog"
+        ],
+        "extensions": [
+          ".v",
+          ".vh",
+          ".vl"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "verilog",
+        "scopeName": "source.verilog",
+        "path": "./syntaxes/verilog.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "verilog",
+        "path": "./snippets/verilog.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "verilite.lintNow",
+        "title": "VeriLite: Check Current File"
+      },
+      {
+        "command": "verilite.clearDiagnostics",
+        "title": "VeriLite: Clear All Diagnostics"
+      },
+      {
+        "command": "verilite.insertHeader",
+        "title": "VeriLite: Insert File Header"
+      },
+      {
+        "command": "verilite.alignSelection",
+        "title": "VeriLite: Align Selection"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "verilite.lintNow",
+          "when": "editorLangId == verilog"
+        },
+        {
+          "command": "verilite.clearDiagnostics",
+          "when": "editorLangId == verilog"
+        },
+        {
+          "command": "verilite.insertHeader",
+          "when": "editorLangId == verilog"
+        },
+        {
+          "command": "verilite.alignSelection",
+          "when": "editorLangId == verilog"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "verilite.alignSelection",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorTextFocus && editorLangId == verilog"
+      }
+    ],
+    "configuration": {
+      "title": "VeriLite",
+      "properties": {
+        "verilite.lint.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable VeriLite error checking."
+        },
+        "verilite.lint.runOn": {
+          "type": "string",
+          "enum": [
+            "type",
+            "save",
+            "manual"
+          ],
+          "enumDescriptions": [
+            "Check while typing (debounced)",
+            "Check only on save",
+            "Check only via the VeriLite: Check Current File command"
+          ],
+          "default": "type",
+          "description": "When to run the checker."
+        },
+        "verilite.lint.debounceMs": {
+          "type": "number",
+          "default": 400,
+          "minimum": 0,
+          "maximum": 5000,
+          "description": "Delay in milliseconds before re-checking while typing."
+        },
+        "verilite.lint.maxIssues": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "description": "Maximum number of diagnostics reported per file."
+        },
+        "verilite.lint.warnMissingDefault": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when a case statement has no default branch."
+        },
+        "verilite.lint.warnBlockingInSeq": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn about blocking assignments in sequential blocks and non-blocking assignments in combinational blocks."
+        },
+        "verilite.lint.warnAlwaysNoSensitivity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Warn when an always block has no sensitivity list. Turn this off if you write a lot of testbenches."
+        },
+        "verilite.lint.hintTrailingWhitespace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a hint on lines with trailing whitespace."
+        },
+        "verilite.format.indentStyle": {
+          "type": "string",
+          "enum": [
+            "space",
+            "tab"
+          ],
+          "default": "space",
+          "description": "Indent using spaces or tabs."
+        },
+        "verilite.format.indentSize": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Number of spaces per indent level."
+        },
+        "verilite.format.alignPorts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align consecutive port declarations."
+        },
+        "verilite.format.alignAssignments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Column-align the '=' of consecutive assign statements."
+        },
+        "verilite.format.spaceAroundOperators": {
+          "type": "boolean",
+          "default": true,
+          "description": "Put one space around unambiguous binary operators such as = <= == &&."
+        },
+        "verilite.completion.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable keyword and symbol completion."
+        },
+        "verilite.completion.includeSystemTasks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include system tasks such as $display in completion results."
+        },
+        "verilite.lint.external": {
+          "type": "string",
+          "enum": [
+            "none",
+            "iverilog",
+            "verilator"
+          ],
+          "default": "none",
+          "description": "Reserved for v0.2. External compiler used for deep checking. Not implemented in v0.1."
+        },
+        "verilite.lint.externalPath": {
+          "type": "string",
+          "default": "",
+          "description": "Reserved for v0.2. Path to the external compiler executable."
+        },
+        "verilite.format.external": {
+          "type": "string",
+          "enum": [
+            "none",
+            "verible"
+          ],
+          "default": "none",
+          "description": "Reserved for v0.2. External formatter. Not implemented in v0.1."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "node --test out-test/test/unit/*.test.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.5.0"
+  }
+}
