@@ -1,6 +1,7 @@
-import { KEYWORD_SET } from "./keywords";
+import { keywordsFor } from "./keywords";
 import type {
 	ColRange,
+	Dialect,
 	LexResult,
 	LineKind,
 	Position,
@@ -17,13 +18,13 @@ const TOKEN_RE =
 
 type MaskState = "normal" | "line" | "block" | "string" | "escaped";
 
-function classify(text: string): TokenKind {
+function classify(text: string, keywordSet: Set<string>): TokenKind {
 	const first = text[0];
 	if (first === "`") return "directive";
 	if (first === "$") return "systemTask";
 	if (/^[0-9']/.test(text)) return "number";
 	if (/^[A-Za-z_]/.test(text)) {
-		return KEYWORD_SET.has(text.toLowerCase()) ? "keyword" : "identifier";
+		return keywordSet.has(text.toLowerCase()) ? "keyword" : "identifier";
 	}
 	if (/^[()[\]{};,.@#]$/.test(text)) return "punctuation";
 	return "operator";
@@ -37,7 +38,8 @@ function classify(text: string): TokenKind {
  * Every later stage (linting, indenting, spacing, alignment) works on the mask,
  * which is what keeps `// end` inside a comment from breaking the block matcher.
  */
-export function lex(text: string): LexResult {
+export function lex(text: string, dialect: Dialect = "verilog"): LexResult {
+	const keywordSet = keywordsFor(dialect).set;
 	const masked: string[] = new Array(text.length);
 	const protectedRanges: ColRange[][] = [[]];
 	const lineStartsInBlockComment: boolean[] = [false];
@@ -179,7 +181,7 @@ export function lex(text: string): LexResult {
 				line: l,
 				col: m.index,
 				endCol: m.index + tokenText.length,
-				kind: classify(tokenText),
+				kind: classify(tokenText, keywordSet),
 			};
 			lineTokens.push(token);
 			tokens.push(token);

@@ -1,10 +1,18 @@
-import { BLOCK_PAIRS, CLOSER_TO_OPENERS } from "../../core/keywords";
-import type { LexResult, Token } from "../../core/types";
+import { indentPairsFor } from "../../core/keywords";
+import type { Dialect, LexResult, Token } from "../../core/types";
 import type { LintIssue } from "./types";
 
 interface Frame {
 	word: string;
 	token: Token;
+}
+
+function isSubprogramPrototype(tokens: Token[], index: number): boolean {
+	for (let i = index - 1; i >= 0; i--) {
+		if (tokens[i].line !== tokens[index].line || tokens[i].text === ";") break;
+		if (["extern", "pure", "import", "export"].includes(tokens[i].lower)) return true;
+	}
+	return false;
 }
 
 /**
@@ -13,7 +21,8 @@ interface Frame {
  * Matches begin/end, case/endcase, module/endmodule, fork/join, `ifdef/`endif...
  * using a simple stack over the token stream produced from masked text.
  */
-export function checkPairs(lex: LexResult): LintIssue[] {
+export function checkPairs(lex: LexResult, dialect: Dialect = "verilog"): LintIssue[] {
+	const { blockPairs, closerToOpeners } = indentPairsFor(dialect);
 	const issues: LintIssue[] = [];
 	const stack: Frame[] = [];
 	const tokens = lex.tokens;
@@ -28,13 +37,15 @@ export function checkPairs(lex: LexResult): LintIssue[] {
 		if (w === "fork" && (prev === "disable" || prev === "wait")) continue;
 		// `default` inside a case is not the `default_nettype` directive
 		if (w === "`elsif" || w === "`else") continue;
+		// Class prototypes and DPI declarations end at `;`, not endfunction/endtask.
+		if ((w === "function" || w === "task") && isSubprogramPrototype(tokens, i)) continue;
 
-		if (BLOCK_PAIRS[w]) {
+		if (blockPairs[w]) {
 			stack.push({ word: w, token: t });
 			continue;
 		}
 
-		const openers = CLOSER_TO_OPENERS[w];
+		const openers = closerToOpeners[w];
 		if (!openers) continue;
 
 		if (stack.length === 0) {
@@ -66,7 +77,7 @@ export function checkPairs(lex: LexResult): LintIssue[] {
 	}
 
 	for (const frame of stack) {
-		const expected = BLOCK_PAIRS[frame.word].join("' / '");
+		const expected = blockPairs[frame.word].join("' / '");
 		issues.push({
 			line: frame.token.line,
 			col: frame.token.col,

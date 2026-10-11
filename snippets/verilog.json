@@ -44,38 +44,34 @@
 		],
 		"description": "模块骨架 · 裸版，无参数无端口"
 	},
-	"Always block on clock edge": {
-		"prefix": "always",
+
+	"Module instantiation with parameters": {
+		"prefix": "inst",
 		"body": [
-			"always @(posedge ${1:clk}) begin",
-			"\t$0",
-			"end"
+			"${1:module_name} #(",
+			"\t.${2:WIDTH} (${3:8})",
+			") ${4:u_inst} (",
+			"\t.clk       (clk),",
+			"\t.rst_n     (rst_n),",
+			"\t.${5:din}  (${6:din}),",
+			"\t.${7:dout} (${8:dout})",
+			");"
 		],
-		"description": "时序块 · 纯同步，无复位"
+		"description": "例化 · 带参数"
 	},
-	"Combinational always block": {
-		"prefix": ["alwaysc", "always_comb"],
+	"Module instantiation without parameters": {
+		"prefix": "instb",
 		"body": [
-			"always @(*) begin",
-			"\t${1:out} = ${2:1'b0};",
-			"\t$0",
-			"end"
+			"${1:module_name} ${2:u_inst} (",
+			"\t.clk       (clk),",
+			"\t.rst_n     (rst_n),",
+			"\t.${3:din}  (${4:din}),",
+			"\t.${5:dout} (${6:dout})",
+			");"
 		],
-		"description": "组合块 · @(*) 带默认赋值"
+		"description": "例化 · 无参数"
 	},
-	"Sequential always block with reset": {
-		"prefix": ["alwaysr", "always_ff"],
-		"body": [
-			"always @(posedge ${1:clk} or negedge ${2:rst_n}) begin",
-			"\tif (!${2:rst_n}) begin",
-			"\t\t${3:q} <= ${4:1'b0};",
-			"\tend else begin",
-			"\t\t$0",
-			"\tend",
-			"end"
-		],
-		"description": "时序块 · 带异步低有效复位"
-	},
+
 	"Begin end block": {
 		"prefix": "begin",
 		"body": [
@@ -114,15 +110,6 @@
 		],
 		"description": "if / else 带 begin-end"
 	},
-	"Initial block": {
-		"prefix": "initial",
-		"body": [
-			"initial begin",
-			"\t$0",
-			"end"
-		],
-		"description": "initial 块"
-	},
 	"Case statement": {
 		"prefix": "case",
 		"body": [
@@ -134,6 +121,17 @@
 		],
 		"description": "case 语句 · 两分支加 default"
 	},
+	"Casez statement": {
+		"prefix": "casez",
+		"body": [
+			"casez (${1:sel})",
+			"\t${2:4'b1???}: ${3:out = 2'd0;}",
+			"\t${4:4'b01??}: ${5:out = 2'd1;}",
+			"\tdefault:     ${6:out = 2'd0;}",
+			"endcase"
+		],
+		"description": "casez 语句 · ? 为无关位，常用于优先级编码"
+	},
 	"For loop": {
 		"prefix": "for",
 		"body": [
@@ -143,6 +141,34 @@
 			"end"
 		],
 		"description": "for 循环 · 含 integer 索引声明"
+	},
+	"While loop": {
+		"prefix": "while",
+		"body": [
+			"while (${1:cond}) begin",
+			"\t$0",
+			"end"
+		],
+		"description": "while 循环"
+	},
+	"Repeat loop": {
+		"prefix": "repeat",
+		"body": [
+			"repeat (${1:N}) begin",
+			"\t$0",
+			"end"
+		],
+		"description": "repeat 循环 · 固定次数"
+	},
+	"Forever loop": {
+		"prefix": "forever",
+		"body": [
+			"forever begin",
+			"\t#${1:5};",
+			"\t$0",
+			"end"
+		],
+		"description": "forever 循环 · 需含延时，仅用于仿真"
 	},
 	"Generate for loop": {
 		"prefix": "genfor",
@@ -156,6 +182,75 @@
 		],
 		"description": "generate-for 具名块"
 	},
+	"Generate if": {
+		"prefix": "genif",
+		"body": [
+			"generate",
+			"\tif (${1:PARAM} == ${2:1}) begin : ${3:gen_true}",
+			"\t\t$0",
+			"\tend else begin : ${4:gen_false}",
+			"\t\t",
+			"\tend",
+			"endgenerate"
+		],
+		"description": "generate-if 条件例化 · 具名块"
+	},
+	"Initial block": {
+		"prefix": "initial",
+		"body": [
+			"initial begin",
+			"\t$0",
+			"end"
+		],
+		"description": "initial 块"
+	},
+
+	"Always block on clock edge": {
+		"prefix": "always",
+		"body": [
+			"always @(posedge ${1:clk}) begin",
+			"\t$0",
+			"end"
+		],
+		"description": "时序块 · 纯同步，无复位"
+	},
+	"Combinational always block": {
+		"prefix": "alwaysc",
+		"body": [
+			"always @(*) begin",
+			"\t${1:out} = ${2:1'b0};",
+			"\t$0",
+			"end"
+		],
+		"description": "组合块 · @(*) 带默认赋值"
+	},
+	"Sequential always block with reset": {
+		"prefix": "alwaysr",
+		"body": [
+			"always @(posedge ${1:clk} or negedge ${2:rst_n}) begin",
+			"\tif (!${2:rst_n}) begin",
+			"\t\t${3:q} <= ${4:1'b0};",
+			"\tend else begin",
+			"\t\t$0",
+			"\tend",
+			"end"
+		],
+		"description": "时序块 · 带异步低有效复位"
+	},
+	"Sequential always block with sync reset": {
+		"prefix": "alwaysrs",
+		"body": [
+			"always @(posedge ${1:clk}) begin",
+			"\tif (${2:rst}) begin",
+			"\t\t${3:q} <= ${4:1'b0};",
+			"\tend else begin",
+			"\t\t$0",
+			"\tend",
+			"end"
+		],
+		"description": "时序块 · 带同步高有效复位"
+	},
+
 	"Function": {
 		"prefix": "function",
 		"body": [
@@ -180,6 +275,7 @@
 		],
 		"description": "task 骨架"
 	},
+
 	"Three-process FSM": {
 		"prefix": "fsm",
 		"body": [
@@ -213,67 +309,7 @@
 		],
 		"description": "三段式状态机"
 	},
-	"File header": {
-		"prefix": "header",
-		"body": [
-			"// ---------------------------------------------------------------",
-			"// File        : ${TM_FILENAME}",
-			"// Author      : ${1:author}",
-			"// Created     : ${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}",
-			"// Description : ${2:description}",
-			"// ---------------------------------------------------------------",
-			"$0"
-		],
-		"description": "文件头注释块"
-	},
-	"Module instantiation with parameters": {
-		"prefix": "inst",
-		"body": [
-			"${1:module_name} #(",
-			"\t.${2:WIDTH} (${3:8})",
-			") ${4:u_inst} (",
-			"\t.clk       (clk),",
-			"\t.rst_n     (rst_n),",
-			"\t.${5:din}  (${6:din}),",
-			"\t.${7:dout} (${8:dout})",
-			");"
-		],
-		"description": "例化 · 带参数"
-	},
-	"Module instantiation without parameters": {
-		"prefix": "instb",
-		"body": [
-			"${1:module_name} ${2:u_inst} (",
-			"\t.clk       (clk),",
-			"\t.rst_n     (rst_n),",
-			"\t.${3:din}  (${4:din}),",
-			"\t.${5:dout} (${6:dout})",
-			");"
-		],
-		"description": "例化 · 无参数"
-	},
-	"Timescale": {
-		"prefix": "timescale",
-		"body": ["`timescale ${1:1ns} / ${2:1ps}"],
-		"description": "timescale 指令"
-	},
-	"Include guard": {
-		"prefix": "guard",
-		"body": [
-			"`ifndef ${1:NAME}_VH",
-			"`define ${1:NAME}_VH",
-			"",
-			"$0",
-			"",
-			"`endif"
-		],
-		"description": "头文件 include guard"
-	},
-	"Assign with ternary": {
-		"prefix": "assignt",
-		"body": ["assign ${1:out} = ${2:cond} ? ${3:a} : ${4:b};"],
-		"description": "三目赋值"
-	},
+
 	"Wire declaration": {
 		"prefix": "wire",
 		"body": ["wire [${1:WIDTH}-1:0] ${2:name};"],
@@ -283,6 +319,21 @@
 		"prefix": "reg",
 		"body": ["reg  [${1:WIDTH}-1:0] ${2:name};"],
 		"description": "reg 声明 · 带位宽"
+	},
+	"Integer declaration": {
+		"prefix": "integer",
+		"body": ["integer ${1:i};"],
+		"description": "integer 声明 · 循环索引或仿真变量"
+	},
+	"Genvar declaration": {
+		"prefix": "genvar",
+		"body": ["genvar ${1:i};"],
+		"description": "genvar 声明 · generate 循环索引"
+	},
+	"Real declaration": {
+		"prefix": "real",
+		"body": ["real ${1:name};"],
+		"description": "real 声明 · 仿真用浮点变量"
 	},
 	"Parameter": {
 		"prefix": "param",
@@ -299,6 +350,104 @@
 		"body": ["${1|input,output,inout|} wire [${2:WIDTH}-1:0] ${3:name},"],
 		"description": "端口声明 · 方向可选"
 	},
+
+	"Continuous assign": {
+		"prefix": "assign",
+		"body": ["assign ${1:out} = ${2:in};"],
+		"description": "连续赋值"
+	},
+	"Assign with ternary": {
+		"prefix": "assignt",
+		"body": ["assign ${1:out} = ${2:cond} ? ${3:a} : ${4:b};"],
+		"description": "三目赋值"
+	},
+
+	"Two stage synchronizer": {
+		"prefix": "sync2",
+		"body": [
+			"reg ${1:sig}_d1, ${1:sig}_d2;",
+			"always @(posedge ${2:clk} or negedge ${3:rst_n}) begin",
+			"\tif (!${3:rst_n}) begin",
+			"\t\t${1:sig}_d1 <= 1'b0;",
+			"\t\t${1:sig}_d2 <= 1'b0;",
+			"\tend else begin",
+			"\t\t${1:sig}_d1 <= ${1:sig};",
+			"\t\t${1:sig}_d2 <= ${1:sig}_d1;",
+			"\tend",
+			"end"
+		],
+		"description": "两级同步器 · 跨时钟域打两拍"
+	},
+	"Edge detect": {
+		"prefix": "edge",
+		"body": [
+			"reg ${1:sig}_d;",
+			"always @(posedge ${2:clk} or negedge ${3:rst_n}) begin",
+			"\tif (!${3:rst_n}) ${1:sig}_d <= 1'b0;",
+			"\telse            ${1:sig}_d <= ${1:sig};",
+			"end",
+			"",
+			"wire ${1:sig}_rise =  ${1:sig} & ~${1:sig}_d;",
+			"wire ${1:sig}_fall = ~${1:sig} &  ${1:sig}_d;"
+		],
+		"description": "边沿检测 · 上升沿与下降沿脉冲"
+	},
+	"Counter": {
+		"prefix": "cnt",
+		"body": [
+			"reg [${1:7}:0] ${2:cnt};",
+			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
+			"\tif (!${4:rst_n})               ${2:cnt} <= 0;",
+			"\telse if (${2:cnt} == ${5:MAX}) ${2:cnt} <= 0;",
+			"\telse                           ${2:cnt} <= ${2:cnt} + 1'b1;",
+			"end"
+		],
+		"description": "计数器 · 到上限自动清零"
+	},
+	"Shift register": {
+		"prefix": "shift",
+		"body": [
+			"reg [${1:7}:0] ${2:shift_reg};",
+			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
+			"\tif (!${4:rst_n}) ${2:shift_reg} <= 0;",
+			"\telse            ${2:shift_reg} <= {${2:shift_reg}[${1:7}-1:0], ${5:din}};",
+			"end"
+		],
+		"description": "移位寄存器"
+	},
+	"Pipeline stages": {
+		"prefix": "pipe",
+		"body": [
+			"reg [${1:WIDTH}-1:0] ${2:data}_d1;",
+			"reg [${1:WIDTH}-1:0] ${2:data}_d2;",
+			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
+			"\tif (!${4:rst_n}) begin",
+			"\t\t${2:data}_d1 <= 0;",
+			"\t\t${2:data}_d2 <= 0;",
+			"\tend else begin",
+			"\t\t${2:data}_d1 <= ${2:data};",
+			"\t\t${2:data}_d2 <= ${2:data}_d1;",
+			"\tend",
+			"end"
+		],
+		"description": "流水线打拍 · 两级"
+	},
+	"Memory array": {
+		"prefix": "mem",
+		"body": [
+			"reg [${1:WIDTH}-1:0] ${2:mem} [0:${3:DEPTH}-1];",
+			"",
+			"always @(posedge ${4:clk}) begin",
+			"\tif (${5:we}) ${2:mem}[${6:waddr}] <= ${7:wdata};",
+			"end",
+			"",
+			"always @(posedge ${4:clk}) begin",
+			"\t${8:rdata} <= ${2:mem}[${9:raddr}];",
+			"end"
+		],
+		"description": "存储器 · 同步读写口"
+	},
+
 	"Testbench skeleton": {
 		"prefix": "tb",
 		"body": [
@@ -389,6 +538,80 @@
 		],
 		"description": "延时后结束仿真"
 	},
+	"Stop": {
+		"prefix": "stop",
+		"body": ["\\$stop;"],
+		"description": "暂停仿真 · 可在交互中继续"
+	},
+	"Random value": {
+		"prefix": "random",
+		"body": ["${1:data} = \\$random % ${2:256};"],
+		"description": "随机激励 · 取模限制范围"
+	},
+	"Readmemh": {
+		"prefix": "readmemh",
+		"body": ["\\$readmemh(\"${1:init}.mem\", ${2:mem});"],
+		"description": "十六进制文件初始化存储器"
+	},
+	"Readmemb": {
+		"prefix": "readmemb",
+		"body": ["\\$readmemb(\"${1:init}.mem\", ${2:mem});"],
+		"description": "二进制文件初始化存储器"
+	},
+	"File open": {
+		"prefix": "fopen",
+		"body": [
+			"integer ${1:fp};",
+			"${1:fp} = \\$fopen(\"${2:file}.txt\", \"${3|r,w,a|}\");",
+			"if (${1:fp} == 0) begin",
+			"\t\\$display(\"ERROR: cannot open ${2:file}.txt\");",
+			"\t\\$finish;",
+			"end"
+		],
+		"description": "打开文件 · 含失败检查，模式可选 r/w/a"
+	},
+	"File close": {
+		"prefix": "fclose",
+		"body": ["\\$fclose(${1:fp});"],
+		"description": "关闭文件"
+	},
+	"File write": {
+		"prefix": "fwrite",
+		"body": [
+			"\\$fwrite(${1:fp}, \"%0t | ${2:sig} = %h\\n\", \\$time, ${2:sig});"
+		],
+		"description": "写入文件 · fwrite 格式化输出"
+	},
+	"File display": {
+		"prefix": "fdisplay",
+		"body": [
+			"\\$fdisplay(${1:fp}, \"%0t | ${2:sig} = %h\", \\$time, ${2:sig});"
+		],
+		"description": "写入文件 · fdisplay 自动换行"
+	},
+	"File scanf": {
+		"prefix": "fscanf",
+		"body": [
+			"integer ${1:code};",
+			"${1:code} = \\$fscanf(${2:fp}, \"${3:%h}\", ${4:data});",
+			"if (${1:code} != ${5:1}) begin",
+			"\t\\$display(\"ERROR at %0t: fscanf failed\", \\$time);",
+			"end"
+		],
+		"description": "读文件 · fscanf 格式化读取并检查返回值"
+	},
+	"File gets": {
+		"prefix": "fgets",
+		"body": [
+			"reg [8*${1:256}-1:0] ${2:line};",
+			"integer ${3:code};",
+			"${3:code} = \\$fgets(${2:line}, ${4:fp});",
+			"if (${3:code} == 0) begin",
+			"\t\\$display(\"EOF or read error\");",
+			"end"
+		],
+		"description": "读文件 · fgets 按行读取"
+	},
 	"Assert compare": {
 		"prefix": "assert",
 		"body": [
@@ -399,115 +622,37 @@
 		],
 		"description": "结果比对 · 不符则报错计数"
 	},
-	"Two stage synchronizer": {
-		"prefix": "sync2",
-		"body": [
-			"reg ${1:sig}_d1, ${1:sig}_d2;",
-			"always @(posedge ${2:clk} or negedge ${3:rst_n}) begin",
-			"\tif (!${3:rst_n}) begin",
-			"\t\t${1:sig}_d1 <= 1'b0;",
-			"\t\t${1:sig}_d2 <= 1'b0;",
-			"\tend else begin",
-			"\t\t${1:sig}_d1 <= ${1:sig};",
-			"\t\t${1:sig}_d2 <= ${1:sig}_d1;",
-			"\tend",
-			"end"
-		],
-		"description": "两级同步器 · 跨时钟域打两拍"
+
+	"Timescale": {
+		"prefix": "timescale",
+		"body": ["`timescale ${1:1ns} / ${2:1ps}"],
+		"description": "timescale 指令"
 	},
-	"Edge detect": {
-		"prefix": "edge",
+	"Define macro": {
+		"prefix": "define",
 		"body": [
-			"reg ${1:sig}_d;",
-			"always @(posedge ${2:clk} or negedge ${3:rst_n}) begin",
-			"\tif (!${3:rst_n}) ${1:sig}_d <= 1'b0;",
-			"\telse            ${1:sig}_d <= ${1:sig};",
-			"end",
+			"`define ${1:NAME} ${2:value}"
+		],
+		"description": "宏定义"
+	},
+	"Include file": {
+		"prefix": "include",
+		"body": [
+			"`include \"${1:file}.vh\""
+		],
+		"description": "包含头文件"
+	},
+	"Include guard": {
+		"prefix": "guard",
+		"body": [
+			"`ifndef ${1:NAME}_VH",
+			"`define ${1:NAME}_VH",
 			"",
-			"wire ${1:sig}_rise =  ${1:sig} & ~${1:sig}_d;",
-			"wire ${1:sig}_fall = ~${1:sig} &  ${1:sig}_d;"
-		],
-		"description": "边沿检测 · 上升沿与下降沿脉冲"
-	},
-	"Counter": {
-		"prefix": "cnt",
-		"body": [
-			"reg [${1:7}:0] ${2:cnt};",
-			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
-			"\tif (!${4:rst_n})               ${2:cnt} <= 0;",
-			"\telse if (${2:cnt} == ${5:MAX}) ${2:cnt} <= 0;",
-			"\telse                           ${2:cnt} <= ${2:cnt} + 1'b1;",
-			"end"
-		],
-		"description": "计数器 · 到上限自动清零"
-	},
-	"Shift register": {
-		"prefix": "shift",
-		"body": [
-			"reg [${1:7}:0] ${2:shift_reg};",
-			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
-			"\tif (!${4:rst_n}) ${2:shift_reg} <= 0;",
-			"\telse            ${2:shift_reg} <= {${2:shift_reg}[${1:7}-1:0], ${5:din}};",
-			"end"
-		],
-		"description": "移位寄存器"
-	},
-	"Pipeline stages": {
-		"prefix": "pipe",
-		"body": [
-			"reg [${1:WIDTH}-1:0] ${2:data}_d1;",
-			"reg [${1:WIDTH}-1:0] ${2:data}_d2;",
-			"always @(posedge ${3:clk} or negedge ${4:rst_n}) begin",
-			"\tif (!${4:rst_n}) begin",
-			"\t\t${2:data}_d1 <= 0;",
-			"\t\t${2:data}_d2 <= 0;",
-			"\tend else begin",
-			"\t\t${2:data}_d1 <= ${2:data};",
-			"\t\t${2:data}_d2 <= ${2:data}_d1;",
-			"\tend",
-			"end"
-		],
-		"description": "流水线打拍 · 两级"
-	},
-	"Valid ready handshake": {
-		"prefix": "handshake",
-		"body": [
-			"reg ${1:valid_r};",
-			"",
-			"assign ${2:in}_ready  = ${3:out}_ready | ~${1:valid_r};",
-			"assign ${3:out}_valid = ${1:valid_r};",
-			"",
-			"always @(posedge ${4:clk} or negedge ${5:rst_n}) begin",
-			"\tif (!${5:rst_n})                            ${1:valid_r} <= 1'b0;",
-			"\telse if (${2:in}_valid & ${2:in}_ready)     ${1:valid_r} <= 1'b1;",
-			"\telse if (${3:out}_valid & ${3:out}_ready)   ${1:valid_r} <= 1'b0;",
-			"end"
-		],
-		"description": "valid / ready 握手"
-	},
-	"Memory array": {
-		"prefix": "mem",
-		"body": [
-			"reg [${1:WIDTH}-1:0] ${2:mem} [0:${3:DEPTH}-1];",
-			"",
-			"always @(posedge ${4:clk}) begin",
-			"\tif (${5:we}) ${2:mem}[${6:waddr}] <= ${7:wdata};",
-			"end",
-			"",
-			"always @(posedge ${4:clk}) begin",
-			"\t${8:rdata} <= ${2:mem}[${9:raddr}];",
-			"end"
-		],
-		"description": "存储器 · 同步读写口"
-	},
-	"Folding region": {
-		"prefix": "region",
-		"body": [
-			"// #region ${1:name}",
 			"$0",
-			"// #endregion"
+			"",
+			"`endif"
 		],
-		"description": "折叠区域标记"
+		"description": "头文件 include guard"
 	},
 	"Ifdef block": {
 		"prefix": "ifdef",
@@ -527,6 +672,20 @@
 		],
 		"description": "条件编译 · ifndef"
 	},
+
+	"File header": {
+		"prefix": "header",
+		"body": [
+			"// ---------------------------------------------------------------",
+			"// File        : ${TM_FILENAME}",
+			"// Author      : ${1:author}",
+			"// Created     : ${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}",
+			"// Description : ${2:description}",
+			"// ---------------------------------------------------------------",
+			"$0"
+		],
+		"description": "文件头注释块"
+	},
 	"Separator comment": {
 		"prefix": "sep",
 		"body": ["// ---------------- ${1:section} ----------------"],
@@ -536,5 +695,85 @@
 		"prefix": "todo",
 		"body": ["// TODO(${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}): ${1:what}"],
 		"description": "TODO 注释 · 带当前日期"
+	},
+	"Folding region": {
+		"prefix": "region",
+		"body": [
+			"// #region ${1:name}",
+			"$0",
+			"// #endregion"
+		],
+		"description": "折叠区域标记"
+	},
+
+	"AXI-Stream slave port declaration": {
+		"prefix": "axis_s",
+		"body": [
+			"input  wire                         ${1:s_axis}_tvalid,",
+			"output wire                         ${1:s_axis}_tready,",
+			"input  wire [${2:DATA_WIDTH}-1:0]   ${1:s_axis}_tdata,",
+			"input  wire [${2:DATA_WIDTH}/8-1:0] ${1:s_axis}_tkeep,",
+			"input  wire                         ${1:s_axis}_tlast,"
+		],
+		"description": "AXI-Stream 从端口（输入流）声明"
+	},
+	"AXI-Stream master port declaration": {
+		"prefix": "axis_m",
+		"body": [
+			"output wire                         ${1:m_axis}_tvalid,",
+			"input  wire                         ${1:m_axis}_tready,",
+			"output wire [${2:DATA_WIDTH}-1:0]   ${1:m_axis}_tdata,",
+			"output wire [${2:DATA_WIDTH}/8-1:0] ${1:m_axis}_tkeep,",
+			"output wire                         ${1:m_axis}_tlast,"
+		],
+		"description": "AXI-Stream 主端口（输出流）声明"
+	},
+	"AXI4-Lite slave port declaration": {
+		"prefix": "axilite_s",
+		"body": [
+			"// AXI4-Lite 从机接口",
+			"input  wire [${1:ADDR_WIDTH}-1:0]   s_axi_awaddr,",
+			"input  wire                         s_axi_awvalid,",
+			"output wire                         s_axi_awready,",
+			"input  wire [${2:DATA_WIDTH}-1:0]   s_axi_wdata,",
+			"input  wire [${2:DATA_WIDTH}/8-1:0] s_axi_wstrb,",
+			"input  wire                         s_axi_wvalid,",
+			"output wire                         s_axi_wready,",
+			"output wire [1:0]                   s_axi_bresp,",
+			"output wire                         s_axi_bvalid,",
+			"input  wire                         s_axi_bready,",
+			"input  wire [${1:ADDR_WIDTH}-1:0]   s_axi_araddr,",
+			"input  wire                         s_axi_arvalid,",
+			"output wire                         s_axi_arready,",
+			"output wire [${2:DATA_WIDTH}-1:0]   s_axi_rdata,",
+			"output wire [1:0]                   s_axi_rresp,",
+			"output wire                         s_axi_rvalid,",
+			"input  wire                         s_axi_rready,"
+		],
+		"description": "AXI4-Lite 从机端口 · 完整读写通道声明"
+	},
+	"AXI4-Lite master port declaration": {
+		"prefix": "axilite_m",
+		"body": [
+			"// AXI4-Lite 主机接口",
+			"output wire [${1:ADDR_WIDTH}-1:0]   m_axi_awaddr,",
+			"output wire                         m_axi_awvalid,",
+			"input  wire                         m_axi_awready,",
+			"output wire [${2:DATA_WIDTH}-1:0]   m_axi_wdata,",
+			"output wire [${2:DATA_WIDTH}/8-1:0] m_axi_wstrb,",
+			"output wire                         m_axi_wvalid,",
+			"input  wire                         m_axi_wready,",
+			"input  wire [1:0]                   m_axi_bresp,",
+			"input  wire                         m_axi_bvalid,",
+			"output wire                         m_axi_bready,",
+			"output wire [${1:ADDR_WIDTH}-1:0]   m_axi_araddr,",
+			"output wire                         m_axi_arvalid,",
+			"input  wire                         m_axi_arready,",
+			"input  wire [${2:DATA_WIDTH}-1:0]   m_axi_rdata,",
+			"input  wire [1:0]                   m_axi_rresp,",
+			"input  wire                         m_axi_rvalid,",
+			"output wire                         m_axi_rready,"
+		],
+		"description": "AXI4-Lite 主机端口 · 完整读写通道声明"
 	}
 }

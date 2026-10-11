@@ -1,0 +1,82 @@
+[
+  {
+    "line": 1,
+    "col": 0,
+    "endCol": 6,
+    "severity": "error",
+    "code": "missing-closer",
+    "message": "缺少与 'module' 匹配的 'endmodule'"
+  },
+  {
+    "line": 7,
+    "col": 9,
+    "endCol": 10,
+    "severity": "error",
+    "code": "missing-semicolon",
+    "message": "语句末尾缺少分号 ';'"
+  },
+  {
+    "line": 10,
+    "col": 15,
+    "endCol": 16,
+    "severity": "error",
+    "code": "unclosed-bracket",
+    "message": "'(' 未闭合，缺少 ')'"
+  },
+  {
+    "line": 12,
+    "col": 4,
+    "endCol": 10,
+    "severity": "warning",
+    "code": "always-no-sensitivity",
+    "message": "'always' 后面缺少敏感列表（如 @(posedge clk) 或 @(*)）；仅在 testbench 中写 'always begin' 才合法"
+  },
+  {
+    "line": 17,
+    "col": 10,
+    "endCol": 11,
+    "severity": "warning",
+    "code": "blocking-in-sequential",
+    "message": "时序逻辑中建议使用非阻塞赋值 '<='"
+  },
+  {
+    "line": 21,
+    "col": 8,
+    "endCol": 12,
+    "severity": "warning",
+    "code": "case-without-default",
+    "message": "case 语句缺少 default 分支，可能综合出锁存器"
+  },
+  {
+    "line": 22,
+    "col": 20,
+    "endCol": 22,
+    "severity": "warning",
+    "code": "nonblocking-in-combinational",
+    "message": "组合逻辑中建议使用阻塞赋值 '='"
+  },
+  {
+    "line": 27,
+    "col": 16,
+    "endCol": 17,
+    "severity": "error",
+    "code": "unclosed-bracket",
+    "message": "'(' 未闭合，缺少 ')'"
+  },
+  {
+    "line": 27,
+    "col": 17,
+    "endCol": 18,
+    "severity": "error",
+    "code": "unterminated-string",
+    "message": "字符串未闭合，缺少结束的双引号"
+  },
+  {
+    "line": 29,
+    "col": 0,
+    "endCol": 9,
+    "severity": "error",
+    "code": "mismatched-pair",
+    "message": "'endmodule' 与第 27 行的 'begin' 不匹配"
+  }
+]

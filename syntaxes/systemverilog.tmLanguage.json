@@ -1,0 +1,86 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SystemVerilog",
+  "scopeName": "source.systemverilog",
+  "patterns": [
+    { "include": "#sv-directives" },
+    { "include": "#sv-declarations" },
+    { "include": "#sv-types" },
+    { "include": "#sv-modifiers" },
+    { "include": "#sv-assertions" },
+    { "include": "#sv-keywords" },
+    { "include": "#sv-operators" },
+    { "include": "source.verilog" }
+  ],
+  "repository": {
+    "sv-directives": {
+      "name": "keyword.control.directive.systemverilog",
+      "match": "`(undefineall|begin_keywords|end_keywords|__FILE__|__LINE__)\\b"
+    },
+    "sv-declarations": {
+      "patterns": [
+        {
+          "match": "\\b(interface|package|program|class|checker|covergroup)\\s+([A-Za-z_][A-Za-z0-9_$]*)",
+          "captures": {
+            "1": { "name": "keyword.control.declaration.systemverilog" },
+            "2": { "name": "entity.name.type.systemverilog" }
+          }
+        },
+        {
+          "match": "\\b(typedef)\\s+(?:enum|struct|union)?(?:\\s+(?:packed|signed|unsigned))*[^;{}]*(?:\\{[^}]*\\}\\s*)?([A-Za-z_][A-Za-z0-9_$]*)\\s*;",
+          "captures": {
+            "1": { "name": "storage.type.typedef.systemverilog" },
+            "2": { "name": "entity.name.type.systemverilog" }
+          }
+        },
+        {
+          "match": "\\b(property|sequence)\\s+([A-Za-z_][A-Za-z0-9_$]*)",
+          "captures": {
+            "1": { "name": "keyword.control.declaration.systemverilog" },
+            "2": { "name": "entity.name.function.systemverilog" }
+          }
+        }
+      ]
+    },
+    "sv-types": {
+      "patterns": [
+        {
+          "name": "storage.type.systemverilog",
+          "match": "\\b(bit|byte|shortint|int|longint|integer|time|shortreal|real|realtime|string|chandle|mailbox|semaphore|process|event|void|logic|reg)\\b"
+        },
+        {
+          "name": "storage.type.aggregate.systemverilog",
+          "match": "\\b(enum|struct|union|class|interface|virtual interface|type|nettype)\\b"
+        },
+        {
+          "name": "storage.type.parameter.systemverilog",
+          "match": "\\b(parameter|localparam|specparam|genvar)\\b"
+        }
+      ]
+    },
+    "sv-modifiers": {
+      "name": "storage.modifier.systemverilog",
+      "match": "\\b(automatic|static|const|var|signed|unsigned|packed|rand|randc|local|protected|virtual|pure|extern)\\b"
+    },
+    "sv-assertions": {
+      "patterns": [
+        {
+          "name": "keyword.control.assertion.systemverilog",
+          "match": "\\b(assert|assume|cover|expect|restrict|property|endproperty|sequence|endsequence|accept_on|reject_on|sync_accept_on|sync_reject_on|eventually|nexttime|s_nexttime|always|s_always|until|s_until|until_with|s_until_with|strong|weak|iff|throughout|within|intersect|first_match)\\b"
+        },
+        {
+          "name": "keyword.operator.temporal.systemverilog",
+          "match": "\\|->|\\|=>|#\\#|\\[\\*|\\[=|\\[->"
+        }
+      ]
+    },
+    "sv-keywords": {
+      "name": "keyword.control.systemverilog",
+      "match": "\\b(alias|always_comb|always_ff|always_latch|before|begin_keywords|bins|binsof|break|checker|class|clocking|constraint|continue|covergroup|cross|dist|do|endchecker|endclass|endclocking|endgroup|endinterface|endpackage|endprogram|extends|final|foreach|global|implements|import|inside|interface|let|matches|modport|new|null|package|priority|program|randcase|randsequence|return|soft|solve|super|tagged|this|unique|unique0|with|wildcard)\\b"
+    },
+    "sv-operators": {
+      "name": "keyword.operator.systemverilog",
+      "match": "::|\\.\\*|\\+\\+|--|\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^=|<<=|>>=|<<<=|>>>="
+    }
+  }
+}

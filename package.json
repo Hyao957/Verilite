@@ -1,8 +1,8 @@
 {
   "name": "verilite",
-  "displayName": "VeriLite - Verilog Support",
-  "description": "Verilog editing, zero setup. Syntax highlighting, snippets, completion, lightweight error checking and formatting - with no external toolchain required.",
-  "version": "0.2.0",
+  "displayName": "VeriLite - Verilog & SystemVerilog Support",
+  "description": "Verilog and SystemVerilog editing with syntax highlighting, completion, lightweight error checking and formatting - no external toolchain required.",
+  "version": "0.3.0",
   "publisher": "publisher",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -31,7 +31,8 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onLanguage:verilog"
+    "onLanguage:verilog",
+    "onLanguage:systemverilog"
   ],
   "contributes": {
     "languages": [
@@ -47,6 +48,18 @@
           ".vl"
         ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "systemverilog",
+        "aliases": [
+          "SystemVerilog",
+          "systemverilog"
+        ],
+        "extensions": [
+          ".sv",
+          ".svh"
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
@@ -54,12 +67,25 @@
         "language": "verilog",
         "scopeName": "source.verilog",
         "path": "./syntaxes/verilog.tmLanguage.json"
+      },
+      {
+        "language": "systemverilog",
+        "scopeName": "source.systemverilog",
+        "path": "./syntaxes/systemverilog.tmLanguage.json"
       }
     ],
     "snippets": [
       {
         "language": "verilog",
         "path": "./snippets/verilog.json"
+      },
+      {
+        "language": "systemverilog",
+        "path": "./snippets/systemverilog.json"
+      },
+      {
+        "language": "verilog",
+        "path": "./snippets/verilog-vivado-attributes.json"
       }
     ],
     "commands": [
@@ -84,19 +110,19 @@
       "commandPalette": [
         {
           "command": "verilite.lintNow",
-          "when": "editorLangId == verilog"
+          "when": "editorLangId == verilog || editorLangId == systemverilog"
         },
         {
           "command": "verilite.clearDiagnostics",
-          "when": "editorLangId == verilog"
+          "when": "editorLangId == verilog || editorLangId == systemverilog"
         },
         {
           "command": "verilite.insertHeader",
-          "when": "editorLangId == verilog"
+          "when": "editorLangId == verilog || editorLangId == systemverilog"
         },
         {
           "command": "verilite.alignSelection",
-          "when": "editorLangId == verilog"
+          "when": "editorLangId == verilog || editorLangId == systemverilog"
         }
       ]
     },
@@ -105,7 +131,7 @@
         "command": "verilite.alignSelection",
         "key": "ctrl+alt+a",
         "mac": "cmd+alt+a",
-        "when": "editorTextFocus && editorLangId == verilog"
+        "when": "editorTextFocus && (editorLangId == verilog || editorLangId == systemverilog)"
       }
     ],
     "configuration": {
@@ -114,7 +140,8 @@
         "verilite.lint.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Enable VeriLite error checking."
+          "description": "Enable VeriLite error checking.",
+          "scope": "language-overridable"
         },
         "verilite.lint.runOn": {
           "type": "string",
@@ -129,40 +156,47 @@
             "Check only via the VeriLite: Check Current File command"
           ],
           "default": "type",
-          "description": "When to run the checker."
+          "description": "When to run the checker.",
+          "scope": "language-overridable"
         },
         "verilite.lint.debounceMs": {
           "type": "number",
           "default": 400,
           "minimum": 0,
           "maximum": 5000,
-          "description": "Delay in milliseconds before re-checking while typing."
+          "description": "Delay in milliseconds before re-checking while typing.",
+          "scope": "language-overridable"
         },
         "verilite.lint.maxIssues": {
           "type": "number",
           "default": 100,
           "minimum": 1,
-          "description": "Maximum number of diagnostics reported per file."
+          "description": "Maximum number of diagnostics reported per file.",
+          "scope": "language-overridable"
         },
         "verilite.lint.warnMissingDefault": {
           "type": "boolean",
           "default": true,
-          "description": "Warn when a case statement has no default branch."
+          "description": "Warn when a case statement has no default branch.",
+          "scope": "language-overridable"
         },
         "verilite.lint.warnBlockingInSeq": {
           "type": "boolean",
           "default": true,
-          "description": "Warn about blocking assignments in sequential blocks and non-blocking assignments in combinational blocks."
+          "description": "Warn about blocking assignments in sequential blocks and non-blocking assignments in combinational blocks.",
+          "scope": "language-overridable"
         },
         "verilite.lint.warnAlwaysNoSensitivity": {
           "type": "boolean",
           "default": true,
-          "description": "Warn when an always block has no sensitivity list. Turn this off if you write a lot of testbenches."
+          "description": "Warn when an always block has no sensitivity list. Turn this off if you write a lot of testbenches.",
+          "scope": "language-overridable"
         },
         "verilite.lint.hintTrailingWhitespace": {
           "type": "boolean",
           "default": false,
-          "description": "Show a hint on lines with trailing whitespace."
+          "description": "Show a hint on lines with trailing whitespace.",
+          "scope": "language-overridable"
         },
         "verilite.format.indentStyle": {
           "type": "string",
@@ -171,49 +205,88 @@
             "tab"
           ],
           "default": "space",
-          "description": "Indent using spaces or tabs."
+          "description": "Indent using spaces or tabs.",
+          "scope": "language-overridable"
         },
         "verilite.format.indentSize": {
           "type": "number",
           "default": 4,
           "minimum": 1,
           "maximum": 8,
-          "description": "Number of spaces per indent level."
+          "description": "Number of spaces per indent level.",
+          "scope": "language-overridable"
         },
         "verilite.format.alignPorts": {
           "type": "boolean",
           "default": true,
-          "description": "Column-align consecutive port declarations."
+          "description": "Column-align consecutive port declarations.",
+          "scope": "language-overridable"
         },
         "verilite.format.alignAssignments": {
           "type": "boolean",
           "default": false,
-          "description": "Column-align the '=' of consecutive assign statements."
+          "description": "Column-align the '=' of consecutive assign statements.",
+          "scope": "language-overridable"
         },
         "verilite.format.spaceAroundOperators": {
           "type": "boolean",
           "default": true,
-          "description": "Put one space around unambiguous binary operators such as = <= == &&."
+          "description": "Put one space around unambiguous binary operators such as = <= == &&.",
+          "scope": "language-overridable"
         },
         "verilite.format.joinBegin": {
           "type": "boolean",
           "default": true,
-          "description": "Merge a 'begin' that sits alone on its line up onto its control head, e.g. 'always @(...)\\nbegin' becomes 'always @(...) begin'."
+          "description": "Merge a 'begin' that sits alone on its line up onto its control head, e.g. 'always @(...)\\nbegin' becomes 'always @(...) begin'.",
+          "scope": "language-overridable"
         },
         "verilite.format.alignIfElse": {
           "type": "boolean",
           "default": true,
-          "description": "Column-align the bodies of consecutive single-statement if / else if / else branches (branches that use begin/end keep the normal indentation)."
+          "description": "Column-align the bodies of consecutive single-statement if / else if / else branches (branches that use begin/end keep the normal indentation).",
+          "scope": "language-overridable"
+        },
+        "verilite.format.alignDeclarations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align consecutive net / variable declarations (wire, reg, logic, ...), lining up the signal names the way port declarations are aligned.",
+          "scope": "language-overridable"
+        },
+        "verilite.format.alignParams": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align the '=' of consecutive parameter / localparam initialisations.",
+          "scope": "language-overridable"
+        },
+        "verilite.format.alignDeclAssignments": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align the '=' of consecutive initialized declarations (wire/reg/logic with =).",
+          "scope": "language-overridable"
+        },
+        "verilite.format.alignInstancePorts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align .port_name(value) connections in module instantiations and remove blank lines between them.",
+          "scope": "language-overridable"
+        },
+        "verilite.format.alignBlockAssignments": {
+          "type": "boolean",
+          "default": true,
+          "description": "Column-align consecutive assignments (<= / =) inside procedural blocks.",
+          "scope": "language-overridable"
         },
         "verilite.completion.enable": {
           "type": "boolean",
           "default": true,
-          "description": "Enable keyword and symbol completion."
+          "description": "Enable keyword and symbol completion.",
+          "scope": "language-overridable"
         },
         "verilite.completion.includeSystemTasks": {
           "type": "boolean",
           "default": true,
-          "description": "Include system tasks such as $display in completion results."
+          "description": "Include system tasks such as $display in completion results.",
+          "scope": "language-overridable"
         },
         "verilite.lint.external": {
           "type": "string",
@@ -223,12 +296,14 @@
             "verilator"
           ],
           "default": "none",
-          "description": "Reserved for v0.2. External compiler used for deep checking. Not implemented in v0.1."
+          "description": "Reserved for v0.2. External compiler used for deep checking. Not implemented in v0.1.",
+          "scope": "language-overridable"
         },
         "verilite.lint.externalPath": {
           "type": "string",
           "default": "",
-          "description": "Reserved for v0.2. Path to the external compiler executable."
+          "description": "Reserved for v0.2. Path to the external compiler executable.",
+          "scope": "language-overridable"
         },
         "verilite.format.external": {
           "type": "string",
@@ -237,7 +312,8 @@
             "verible"
           ],
           "default": "none",
-          "description": "Reserved for v0.2. External formatter. Not implemented in v0.1."
+          "description": "Reserved for v0.2. External formatter. Not implemented in v0.1.",
+          "scope": "language-overridable"
         }
       }
     }

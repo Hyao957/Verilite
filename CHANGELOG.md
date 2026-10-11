@@ -3,6 +3,50 @@
 All notable changes to VeriLite are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.3.0] - 2026-09-22
+
+### Added
+- **Dual-dialect architecture** — a `Dialect` type (`"verilog" |
+  "systemverilog"`) now threads through the lexer, linter, formatter and symbol
+  scanner (all take an optional trailing `dialect`, defaulting to `verilog`).
+  Dialect vocabulary is served by `keywordsFor(d)` / `indentPairsFor(d)` /
+  `systemTasksFor(d)` in `core/keywords.ts`.
+- **SystemVerilog language** — `.sv` / `.svh` are registered as a separate
+  language (a strict superset of Verilog: extra keywords, system tasks and block
+  pairs such as `interface`/`endinterface`, `class`/`endclass`,
+  `package`/`endpackage`). Highlighting reuses the Verilog grammar via a thin
+  `source.systemverilog` wrapper with SV-specific rules taking precedence.
+- **SystemVerilog completion** — dedicated keyword, system-task and snippet
+  sets, including `always_ff`, interfaces, packages, classes, typedefs, SVA,
+  covergroups and clocking blocks. Verilog files do not receive SV-only
+  suggestions.
+- **User-defined type navigation** — class names and `typedef` declarations
+  (`struct`, `union`, `enum` and aliases) participate in completion, hover and
+  same-file go-to-definition. Variables declared with those types are scanned
+  as symbols as well.
+- **Per-dialect providers** — the Completion, Formatter, Diagnostics and
+  Navigation providers each take a `dialect` in their constructor and are
+  registered once per language in `extension.ts` (no duplicated
+  implementations). Diagnostics uses one collection per dialect.
+- **`LintRule` registry** — lint rules are now `{ name, dialects, run }`
+  objects; the scheduler runs a rule only when the document's dialect matches,
+  so dialect-specific rules can be registered without affecting the other
+  dialect.
+
+### Changed
+- **Settings are language-overridable** — every `verilite.*` setting now has
+  `"scope": "language-overridable"`, and `readConfig` takes the document so
+  per-language overrides (e.g. `[systemverilog]`) resolve.
+- Verilog and SystemVerilog now use independent snippet files and isolated
+  dialect vocabularies, preventing SV-only constructs from leaking into `.v`
+  completion or highlighting.
+
+### Guaranteed
+- Pure-Verilog (`.v`/`.vh`) formatting and lint output is **byte-for-byte
+  unchanged**, pinned by a new golden-snapshot test over `test/fixtures/`.
+
 ## [0.2.0] - 2026-07-29
 
 ### Added

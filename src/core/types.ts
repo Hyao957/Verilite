@@ -13,6 +13,15 @@ export type TokenKind =
 	| "directive"
 	| "systemTask";
 
+/**
+ * The two supported language dialects. Each maps 1:1 onto a VS Code language id
+ * ("verilog" / "systemverilog"), so a dialect value can be used directly as a
+ * document selector language. "systemverilog" is a strict superset of "verilog".
+ */
+export type Dialect = "verilog" | "systemverilog";
+
+export const DIALECTS: readonly Dialect[] = ["verilog", "systemverilog"];
+
 export interface Token {
 	/** Text as it appears in the masked mirror (identical to source for code). */
 	text: string;

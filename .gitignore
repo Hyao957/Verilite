@@ -3,4 +3,5 @@ out/
 out-test/
 *.vsix
 .claude/
+.sentry-native/
 .DS_Store

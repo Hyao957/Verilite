@@ -1,27 +1,31 @@
 `timescale 1ns / 1ps
 `define DEPTH 16
 
+
+
 // 覆盖场景：跨行带参例化、单行例化、位宽、变址位选、
 // 多维数组、三重嵌套 begin-end、非阻塞与阻塞赋值、x/z 未知态
 
 module highlight_demo #(
     parameter integer WIDTH = 8,
-    parameter DEPTH = `DEPTH,
-    localparam ADDRW = 4
+    parameter DEPTH         = `DEPTH,
+    localparam ADDRW        = 4
 ) (
-    input  wire                    clk,
-    input  wire                    rst_n,
-    input  wire signed [WIDTH-1:0] din,
-    input  wire        [ADDRW-1:0] addr,
-    output reg         [WIDTH-1:0] dout,
-    output wire                    valid
+    input  wire             clk,
+    input  wire             rst_n,
+    input  wire [WIDTH-1:0] din,
+    input  wire [ADDRW-1:0] addr,
+    output reg  [WIDTH-1:0] dout,
+    output wire             dasd1,
+    input  wire [    1-1:0] sdasd1,
 );
 
     reg [WIDTH-1:0] mem [0:DEPTH-1];
+
     reg [7:0][3:0] nibbles;
-    wire [3:0] slice_up;
-    wire [3:0] slice_dn;
-    integer i;
+    wire    [3:0] slice_up;
+    wire    [3:0] slice_dn;
+    integer       i;
     genvar g;
 
     always @(*) begin
@@ -39,8 +43,20 @@ module highlight_demo #(
         end
     endgenerate
 
-
-
+    localparam S_IDLE       = 15'h0001;
+    localparam S_REC_DATA   = 15'h0002;
+    localparam S_CHK_OP     = 15'h0004;
+    localparam S_SRH_IP     = 15'h0008;
+    localparam S_WAIT_IP    = 15'h0010;
+    localparam S_UPD_LOCAL  = 15'h0020;
+    localparam S_UDP_REQ    = 15'h0040;
+    localparam S_UPD_FLASH  = 15'h0080;
+    localparam S_WAIT_FLASH = 15'h0100;
+    localparam S_SRCH_ID    = 15'h0200;
+    localparam S_WAIT_ID    = 15'h0400;
+    localparam S_UPD_FLAG   = 15'h0800;
+    localparam S_DIS_FLAG   = 15'h1000;
+    localparam S_DONE       = 15'h2000;
 
     assign slice_up = din[addr +: 4];
     assign slice_dn = din[addr -: 4];
@@ -71,10 +87,10 @@ module highlight_demo #(
 
     // 跨行带参例化
     sub_block #( .WIDTH (WIDTH), .DEPTH (DEPTH)) u_sub_a (
-        .clk (clk),
-        .rst_n (rst_n),
-        .din (din[WIDTH-1:0]),
-        .dout ()
+        .clk   (clk           ),
+        .rst_n (rst_n         ),
+        .din   (din[WIDTH-1:0]),
+        .dout  (dasda         )
     );
 
     // 单行带参例化
@@ -82,17 +98,21 @@ module highlight_demo #(
 
     // 无参例化
     simple_gate u_gate (
-        .a (din[0]),
-        .b (din[1]),
+        .a (din[0]     ),
+        .b (din[1]     ),
         .y (slice_up[0])
     );
+
+    wire [4:0] ip_words = key_add_flag ? 5'd2 : 5'd0;   // IP 预导字数
+    wire [4:0] last_cnt = key_add_flag ? 5'd25 : 5'd2;  // 末字计数
+    wire       in_data  = (udp_flash_cnt >= ip_words);  // 是否已进入 key 数据区
 
     generate
         for (g = 0; g < 2; g = g + 1) begin : gen_loop
             sub_block #(.WIDTH(WIDTH)) u_gen (
-                .clk (clk),
+                .clk   (clk  ),
                 .rst_n (rst_n),
-                .din (din),
+                .din   (din  ),
                 .dout ()
             );
         end
@@ -118,62 +138,42 @@ module highlight_demo #(
         end
     end
 
-endmodule
-
-module name (
-    input  wire clk,
-    input  wire rst_n,
-    input  wire din,
-    output reg  dout,
-    input wire [10-1:0] std,
-    
-);
-    reg [WIDTH-1:0] name;
-
-
-    always @(*) begin
-        out = 1'b0;
-
-    end
-
-    always @(*) begin
-        out = 1'b0;
-
-    end
-
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            q <= 1'b0;
-        end else begin
-
+        if (!rst_n) begin q <= 1'b0;
+        end else begin q <= 1'b1;
         end
     end
-    
-    
+
+    counter u_inst (
+        .clk   (clk  ),
+        .rst_n (rst_n),
+        .din   (din  ),
+        .dout  (dout )
+    );
+
+    reg [7:0] shift_reg;
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            test <= 1'b0;
-        end else begin
-            
-        end
+        if (!rst_n) shift_reg <= 0;
+        else        shift_reg <= {shift_reg[7-1:0], din};
     end
 
+
+    reg sada_d;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) sada_d <= 1'b0; 
+        else        sada_d <= sada;
+    end
     
+    wire sada_rise =  sada & ~sada_d;
+    wire sada_fall = ~sada &  sada_d;
+
+    reg [7:0] cnt;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n)          cnt <= 0;
+        else if (cnt == MAX) cnt <= 0;
+        else                 cnt <= cnt + 1'b1;
+    end
+
+
 endmodule
 
-module name (
-    input  wire          clk,
-    input  wire          rst_n,
-    input  wire          din,
-    output reg           dout,
-    input  wire [1000:0] sd
-);
-
-
-    function [7:0] name;
-        input [7:0] arg;
-        begin
-            name = arg;
-        end
-    endfunction
-endmodule

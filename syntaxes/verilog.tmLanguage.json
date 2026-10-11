@@ -63,7 +63,7 @@
       "patterns": [
         {
           "name": "keyword.control.directive.verilog",
-          "match": "`(define|undef|undefineall|ifdef|ifndef|elsif|else|endif|include|timescale|resetall|default_nettype|celldefine|endcelldefine|unconnected_drive|nounconnected_drive|line|pragma|begin_keywords|end_keywords|__FILE__|__LINE__)\\b"
+          "match": "`(define|undef|ifdef|ifndef|elsif|else|endif|include|timescale|resetall|default_nettype|celldefine|endcelldefine|unconnected_drive|nounconnected_drive|line|pragma)\\b"
         },
         {
           "name": "entity.name.function.preprocessor.verilog",
@@ -73,7 +73,7 @@
     },
 
     "module-declaration": {
-      "match": "\\b(module|macromodule|primitive|interface|package|program)\\s+([A-Za-z_][A-Za-z0-9_$]*)",
+      "match": "\\b(module|macromodule|primitive)\\s+([A-Za-z_][A-Za-z0-9_$]*)",
       "captures": {
         "1": { "name": "keyword.control.verilog" },
         "2": { "name": "entity.name.type.module.verilog" }
@@ -319,7 +319,7 @@
         },
         {
           "name": "storage.modifier.verilog",
-          "match": "\\b(signed|unsigned|automatic|static|const|var|vectored|scalared)\\b"
+          "match": "\\b(signed|unsigned|automatic|vectored|scalared)\\b"
         },
         {
           "name": "storage.type.parameter.verilog",
@@ -327,7 +327,7 @@
         },
         {
           "name": "storage.type.verilog",
-          "match": "\\b(wire|reg|logic|tri|triand|trior|trireg|tri0|tri1|wand|wor|supply0|supply1|integer|real|realtime|time|event|genvar|byte|shortint|int|longint|bit|shortreal|string|typedef|enum|struct|union)\\b"
+          "match": "\\b(wire|reg|tri|triand|trior|trireg|tri0|tri1|wand|wor|supply0|supply1|integer|real|realtime|time|event|genvar)\\b"
         }
       ]
     },
@@ -336,7 +336,7 @@
       "patterns": [
         {
           "name": "keyword.control.verilog",
-          "match": "\\b(module|macromodule|endmodule|primitive|endprimitive|interface|endinterface|package|endpackage|program|endprogram|begin|end|fork|join|join_any|join_none|if|else|case|casex|casez|endcase|default|for|while|repeat|forever|always|always_comb|always_ff|always_latch|initial|final|assign|deassign|force|release|disable|wait|generate|endgenerate|function|endfunction|task|endtask|specify|endspecify|table|endtable|import|export|extern|return|break|continue)\\b"
+          "match": "\\b(module|macromodule|endmodule|primitive|endprimitive|begin|end|fork|join|if|else|case|casex|casez|endcase|default|for|while|repeat|forever|always|initial|assign|deassign|force|release|disable|wait|generate|endgenerate|function|endfunction|task|endtask|specify|endspecify|table|endtable)\\b"
         }
       ]
     },

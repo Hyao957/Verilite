@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { LANGUAGE_ID, readConfig } from "../config";
+import type { Dialect } from "../core/types";
+import { readConfig } from "../config";
 import { computeStartLevel, formatText } from "../engine/format";
 
 function fullRange(document: vscode.TextDocument): vscode.Range {
@@ -18,10 +19,12 @@ export class VerilogFormatter
 		vscode.DocumentFormattingEditProvider,
 		vscode.DocumentRangeFormattingEditProvider
 {
+	constructor(private readonly dialect: Dialect) {}
+
 	provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-		const config = readConfig(document.uri);
+		const config = readConfig(document);
 		try {
-			const formatted = formatText(document.getText(), config.format, 0);
+			const formatted = formatText(document.getText(), config.format, 0, this.dialect);
 			if (formatted === document.getText()) return [];
 			return [vscode.TextEdit.replace(fullRange(document), formatted)];
 		} catch (err) {
@@ -35,16 +38,16 @@ export class VerilogFormatter
 		document: vscode.TextDocument,
 		range: vscode.Range,
 	): vscode.TextEdit[] {
-		const config = readConfig(document.uri);
+		const config = readConfig(document);
 		const target = wholeLines(document, range);
 
 		try {
 			// The selection must inherit the indent level of everything above it,
 			// otherwise every selected line snaps back to column zero.
 			const before = document.getText(new vscode.Range(0, 0, target.start.line, 0));
-			const startLevel = computeStartLevel(before);
+			const startLevel = computeStartLevel(before, this.dialect);
 			const slice = document.getText(target);
-			const formatted = formatText(slice, config.format, startLevel);
+			const formatted = formatText(slice, config.format, startLevel, this.dialect);
 			if (formatted === slice) return [];
 			return [vscode.TextEdit.replace(target, formatted)];
 		} catch (err) {
@@ -55,9 +58,9 @@ export class VerilogFormatter
 	}
 }
 
-export function registerFormatter(): vscode.Disposable[] {
-	const formatter = new VerilogFormatter();
-	const selector: vscode.DocumentSelector = { language: LANGUAGE_ID, scheme: "*" };
+export function registerFormatter(dialect: Dialect): vscode.Disposable[] {
+	const formatter = new VerilogFormatter(dialect);
+	const selector: vscode.DocumentSelector = { language: dialect, scheme: "*" };
 	return [
 		vscode.languages.registerDocumentFormattingEditProvider(selector, formatter),
 		vscode.languages.registerDocumentRangeFormattingEditProvider(selector, formatter),

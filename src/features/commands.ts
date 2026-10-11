@@ -1,12 +1,16 @@
 import * as vscode from "vscode";
-import { LANGUAGE_ID, readConfig } from "../config";
+import { DIALECTS } from "../core/types";
+import type { Dialect } from "../core/types";
+import { readConfig } from "../config";
 import { computeStartLevel, formatText } from "../engine/format";
 import type { DiagnosticsController } from "./diagnostics";
 
-function activeVerilogEditor(): vscode.TextEditor | undefined {
+const HDL_LANGUAGES = new Set<string>(DIALECTS);
+
+function activeHdlEditor(): vscode.TextEditor | undefined {
 	const editor = vscode.window.activeTextEditor;
-	if (!editor || editor.document.languageId !== LANGUAGE_ID) {
-		vscode.window.showWarningMessage("VeriLite: \u8bf7\u5148\u6253\u5f00\u4e00\u4e2a Verilog \u6587\u4ef6\u3002");
+	if (!editor || !HDL_LANGUAGES.has(editor.document.languageId)) {
+		vscode.window.showWarningMessage("VeriLite: \u8bf7\u5148\u6253\u5f00\u4e00\u4e2a Verilog / SystemVerilog \u6587\u4ef6\u3002");
 		return undefined;
 	}
 	return editor;
@@ -38,21 +42,21 @@ function buildHeader(fileName: string): string {
 }
 
 export function registerCommands(
-	diagnostics: DiagnosticsController,
+	controllers: Map<Dialect, DiagnosticsController>,
 ): vscode.Disposable[] {
 	return [
 		vscode.commands.registerCommand("verilite.lintNow", () => {
-			const editor = activeVerilogEditor();
+			const editor = activeHdlEditor();
 			if (!editor) return;
-			diagnostics.runNow(editor.document);
+			controllers.get(editor.document.languageId as Dialect)?.runNow(editor.document);
 		}),
 
 		vscode.commands.registerCommand("verilite.clearDiagnostics", () => {
-			diagnostics.clearAll();
+			for (const controller of controllers.values()) controller.clearAll();
 		}),
 
 		vscode.commands.registerCommand("verilite.insertHeader", async () => {
-			const editor = activeVerilogEditor();
+			const editor = activeHdlEditor();
 			if (!editor) return;
 			const fileName = editor.document.uri.path.split("/").pop() ?? "module";
 			await editor.edit((builder) => {
@@ -61,9 +65,10 @@ export function registerCommands(
 		}),
 
 		vscode.commands.registerCommand("verilite.alignSelection", async () => {
-			const editor = activeVerilogEditor();
+			const editor = activeHdlEditor();
 			if (!editor) return;
-			const config = readConfig(editor.document.uri);
+			const dialect = editor.document.languageId as Dialect;
+			const config = readConfig(editor.document);
 			const selection = editor.selection;
 			if (selection.isEmpty) {
 				vscode.window.showInformationMessage("VeriLite: \u8bf7\u5148\u9009\u4e2d\u8981\u5bf9\u9f50\u7684\u884c\u3002");
@@ -83,7 +88,8 @@ export function registerCommands(
 			const formatted = formatText(
 				editor.document.getText(target),
 				{ ...config.format, alignPorts: true, alignAssignments: true },
-				computeStartLevel(before),
+				computeStartLevel(before, dialect),
+				dialect,
 			);
 			await editor.edit((builder) => builder.replace(target, formatted));
 		}),

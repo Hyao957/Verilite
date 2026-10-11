@@ -1,6 +1,6 @@
-import { DECLARATION_STARTERS, STATEMENT_STARTERS } from "../../core/keywords";
-import type { LexResult, Token } from "../../core/types";
-import type { LintIssue, LintOptions } from "./types";
+import { indentPairsFor } from "../../core/keywords";
+import type { Dialect, LexResult, Token } from "../../core/types";
+import type { LintIssue, LintRule } from "./types";
 
 function nextCodeLine(lex: LexResult, from: number): number {
 	for (let i = from; i < lex.lineKinds.length; i++) {
@@ -55,7 +55,8 @@ function alwaysNoSensitivity(lex: LexResult): LintIssue[] {
 }
 
 /** R3.3 - declaration line that forgot its trailing semicolon. */
-function missingSemicolon(lex: LexResult): LintIssue[] {
+function missingSemicolon(lex: LexResult, dialect: Dialect): LintIssue[] {
+	const { statementStarters, declarationStarters } = indentPairsFor(dialect);
 	const issues: LintIssue[] = [];
 
 	for (let i = 0; i < lex.lineKinds.length; i++) {
@@ -66,7 +67,7 @@ function missingSemicolon(lex: LexResult): LintIssue[] {
 
 		const first = toks[0];
 		const last = toks[toks.length - 1];
-		if (!DECLARATION_STARTERS.has(first.lower)) continue;
+		if (!declarationStarters.has(first.lower)) continue;
 		if (last.text === ";" || last.text === ",") continue;
 		if (last.kind === "operator") continue; // line continues
 		if (last.text === "(" || last.text === "{" || last.text === "[") continue;
@@ -77,7 +78,7 @@ function missingSemicolon(lex: LexResult): LintIssue[] {
 		if (nextLine < 0) continue;
 		const nextFirst = lex.tokensByLine[nextLine][0];
 		if (!nextFirst) continue;
-		if (!STATEMENT_STARTERS.has(nextFirst.lower)) continue;
+		if (!statementStarters.has(nextFirst.lower)) continue;
 
 		issues.push({
 			line: last.line,
@@ -121,23 +122,24 @@ function missingSemicolonAfterCloseParen(lex: LexResult): LintIssue[] {
 }
 
 /** R3.5 - case without a default branch. */
-function caseWithoutDefault(lex: LexResult): LintIssue[] {
+function caseWithoutDefault(lex: LexResult, dialect: Dialect): LintIssue[] {
+	const { blockPairs, closerToOpeners } = indentPairsFor(dialect);
 	const issues: LintIssue[] = [];
-	const stack: Array<{ isCase: boolean; token: Token; hasDefault: boolean }> = [];
+	const stack: Array<{ opener: string; isCase: boolean; token: Token; hasDefault: boolean }> = [];
 	const tokens = lex.tokens;
-
-	const OPEN = new Set(["begin", "case", "casex", "casez", "fork", "function", "task", "generate"]);
-	const CLOSE = new Set(["end", "endcase", "join", "join_any", "join_none", "endfunction", "endtask", "endgenerate"]);
 
 	for (let i = 0; i < tokens.length; i++) {
 		const t = tokens[i];
 		if (t.kind !== "keyword") continue;
 		const w = t.lower;
 
-		if (OPEN.has(w)) {
+		if (blockPairs[w]) {
 			const prev = i > 0 ? tokens[i - 1].lower : "";
 			if (w === "fork" && (prev === "disable" || prev === "wait")) continue;
 			stack.push({
+				opener: w,
+				// `randcase` needs a frame so its `endcase` pairs up correctly, but
+				// it does not require a default branch, so it is never reported.
 				isCase: w === "case" || w === "casex" || w === "casez",
 				token: t,
 				hasDefault: false,
@@ -155,9 +157,16 @@ function caseWithoutDefault(lex: LexResult): LintIssue[] {
 			continue;
 		}
 
-		if (CLOSE.has(w)) {
-			const frame = stack.pop();
-			if (frame && w === "endcase" && frame.isCase && !frame.hasDefault) {
+		if (!closerToOpeners[w]) continue;
+
+		// Close the innermost opener that accepts this keyword, exactly like the
+		// pair checker, so SystemVerilog `randcase` / `randsequence` cannot desync
+		// the frames the way a flat open/close set would.
+		for (let k = stack.length - 1; k >= 0; k--) {
+			const frame = stack[k];
+			if (!blockPairs[frame.opener].includes(w)) continue;
+			stack.splice(k, 1);
+			if (w === "endcase" && frame.isCase && !frame.hasDefault) {
 				issues.push({
 					line: frame.token.line,
 					col: frame.token.col,
@@ -167,6 +176,7 @@ function caseWithoutDefault(lex: LexResult): LintIssue[] {
 					message: "case \u8bed\u53e5\u7f3a\u5c11 default \u5206\u652f\uff0c\u53ef\u80fd\u7efc\u5408\u51fa\u9501\u5b58\u5668",
 				});
 			}
+			break;
 		}
 	}
 
@@ -297,14 +307,20 @@ function trailingWhitespace(lex: LexResult): LintIssue[] {
 	return issues;
 }
 
-export function checkLines(lex: LexResult, options: LintOptions): LintIssue[] {
-	const issues: LintIssue[] = [];
-	issues.push(...codeAfterEndmodule(lex));
-	issues.push(...missingSemicolon(lex));
-	issues.push(...missingSemicolonAfterCloseParen(lex));
-	if (options.warnAlwaysNoSensitivity) issues.push(...alwaysNoSensitivity(lex));
-	if (options.warnMissingDefault) issues.push(...caseWithoutDefault(lex));
-	if (options.warnBlockingInSeq) issues.push(...assignmentStyle(lex));
-	if (options.hintTrailingWhitespace) issues.push(...trailingWhitespace(lex));
-	return issues;
-}
+const BOTH: Dialect[] = ["verilog", "systemverilog"];
+
+/**
+ * The line-oriented rules, as `LintRule` objects. The scheduler in `index.ts`
+ * filters these by dialect and concatenates the results (order is irrelevant:
+ * `lintLexed` sorts before returning). Option-gated rules return `[]` when
+ * their flag is off.
+ */
+export const LINE_RULES: LintRule[] = [
+	{ name: "code-after-endmodule", dialects: BOTH, run: (lex) => codeAfterEndmodule(lex) },
+	{ name: "missing-semicolon", dialects: BOTH, run: (lex, _o, d) => missingSemicolon(lex, d) },
+	{ name: "missing-semicolon-after-paren", dialects: BOTH, run: (lex) => missingSemicolonAfterCloseParen(lex) },
+	{ name: "always-no-sensitivity", dialects: BOTH, run: (lex, o) => (o.warnAlwaysNoSensitivity ? alwaysNoSensitivity(lex) : []) },
+	{ name: "case-without-default", dialects: BOTH, run: (lex, o, d) => (o.warnMissingDefault ? caseWithoutDefault(lex, d) : []) },
+	{ name: "assignment-style", dialects: BOTH, run: (lex, o) => (o.warnBlockingInSeq ? assignmentStyle(lex) : []) },
+	{ name: "trailing-whitespace", dialects: BOTH, run: (lex, o) => (o.hintTrailingWhitespace ? trailingWhitespace(lex) : []) },
+];

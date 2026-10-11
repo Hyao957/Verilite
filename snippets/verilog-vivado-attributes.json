@@ -1,0 +1,163 @@
+{
+	"Generic Vivado attribute": {
+		"prefix": "attr",
+		"body": ["(* ${1|keep,keep_hierarchy,dont_touch,mark_debug,async_reg,ram_style,rom_style,srl_style,shreg_extract,ram_decomp,cascade_height,use_dsp,fsm_encoding,fsm_safe_state,max_fanout,gated_clock,extract_enable,extract_reset,direct_enable,direct_reset,retiming_backward,retiming_forward,io_buffer_type,clock_buffer_type,IOB,black_box,dont_touch_network|} = \"${2:value}\" *)"],
+		"description": "通用属性 · 从常用 Vivado 属性列表中选择（UG901 / UG912）"
+	},
+	"Keep attribute": {
+		"prefix": "keep",
+		"body": ["(* keep = \"true\" *) ${1:wire} ${2:sig};"],
+		"description": "keep · 禁止该信号被综合优化/合并，便于观测与约束"
+	},
+	"Keep hierarchy attribute": {
+		"prefix": "keephier",
+		"body": ["(* keep_hierarchy = \"${1|yes,soft,no|}\" *)"],
+		"description": "keep_hierarchy · 保留层次边界，防止跨层优化（放在 module 或例化前）"
+	},
+	"Dont touch attribute": {
+		"prefix": "donttouch",
+		"body": ["(* dont_touch = \"true\" *) ${1:reg} ${2:sig};"],
+		"description": "dont_touch · 综合与实现全程保留该对象，优先级高于 keep"
+	},
+
+	"Mark debug attribute": {
+		"prefix": "dbg",
+		"body": ["(* mark_debug = \"true\" *) ${1:wire} [${2:7}:0] ${3:sig};"],
+		"description": "mark_debug · 标记为可调试网络，供 ILA / Debug Hub 抓取（UG912）"
+	},
+	"Mark debug and dont touch": {
+		"prefix": "dbgnet",
+		"body": ["(* mark_debug = \"true\", dont_touch = \"true\" *) ${1:wire} [${2:7}:0] ${3:sig};"],
+		"description": "调试网络 · mark_debug + dont_touch 组合，确保信号不被优化"
+	},
+
+	"Async reg attribute": {
+		"prefix": "asyncreg",
+		"body": [
+			"(* async_reg = \"true\" *) reg ${1:sig}_d1;",
+			"(* async_reg = \"true\" *) reg ${1:sig}_d2;"
+		],
+		"description": "async_reg · 跨时钟域同步链寄存器，工具会就近摆放以提高 MTBF"
+	},
+
+	"RAM style attribute": {
+		"prefix": "ramstyle",
+		"body": ["(* ram_style = \"${1|block,distributed,registers,ultra,mixed,auto|}\" *) reg [${2:WIDTH}-1:0] ${3:mem} [0:${4:DEPTH}-1];"],
+		"description": "ram_style · 指定 RAM 实现方式：BRAM / LUTRAM / URAM / 寄存器"
+	},
+	"ROM style attribute": {
+		"prefix": "romstyle",
+		"body": ["(* rom_style = \"${1|block,distributed|}\" *) reg [${2:WIDTH}-1:0] ${3:rom} [0:${4:DEPTH}-1];"],
+		"description": "rom_style · 指定 ROM 实现为块 RAM 或分布式 LUT"
+	},
+	"SRL style attribute": {
+		"prefix": "srlstyle",
+		"body": ["(* srl_style = \"${1|register,srl,srl_reg,reg_srl,reg_srl_reg,block|}\" *) reg [${2:WIDTH}-1:0] ${3:shift_reg};"],
+		"description": "srl_style · 指定移位寄存器实现为 SRL / 触发器 / BRAM"
+	},
+	"Shreg extract attribute": {
+		"prefix": "shregext",
+		"body": ["(* shreg_extract = \"${1|no,yes|}\" *) reg [${2:WIDTH}-1:0] ${3:shift_reg};"],
+		"description": "shreg_extract · 是否允许推断 SRL，设为 no 可保留独立触发器"
+	},
+	"RAM decomp attribute": {
+		"prefix": "ramdecomp",
+		"body": ["(* ram_decomp = \"power\" *) reg [${1:WIDTH}-1:0] ${2:mem} [0:${3:DEPTH}-1];"],
+		"description": "ram_decomp · 按低功耗方式拆分大容量 RAM"
+	},
+	"Cascade height attribute": {
+		"prefix": "cascade",
+		"body": ["(* cascade_height = ${1:8} *) reg [${2:WIDTH}-1:0] ${3:mem} [0:${4:DEPTH}-1];"],
+		"description": "cascade_height · 限制块 RAM 级联深度，权衡时序与资源"
+	},
+
+	"Use DSP attribute": {
+		"prefix": "usedsp",
+		"body": ["(* use_dsp = \"${1|yes,no,logic,simd|}\" *)"],
+		"description": "use_dsp · 控制算术运算是否映射到 DSP48（可用于 module 或信号）"
+	},
+	"FSM encoding attribute": {
+		"prefix": "fsmenc",
+		"body": ["(* fsm_encoding = \"${1|one_hot,sequential,gray,johnson,auto,none|}\" *) reg [${2:1}:0] ${3:cur_state};"],
+		"description": "fsm_encoding · 指定状态机编码方式"
+	},
+	"FSM safe state attribute": {
+		"prefix": "fsmsafe",
+		"body": ["(* fsm_safe_state = \"${1|auto_safe_state,reset_state,power_on_state,default_state|}\" *) reg [${2:1}:0] ${3:cur_state};"],
+		"description": "fsm_safe_state · 状态机进入非法状态时的恢复策略"
+	},
+
+	"Max fanout attribute": {
+		"prefix": "maxfanout",
+		"body": ["(* max_fanout = ${1:50} *) reg ${2:sig};"],
+		"description": "max_fanout · 限制扇出，超过则自动复制驱动以改善时序"
+	},
+	"Gated clock attribute": {
+		"prefix": "gatedclk",
+		"body": ["(* gated_clock = \"true\" *) input wire ${1:clk};"],
+		"description": "gated_clock · 提示综合将门控时钟转换为时钟使能"
+	},
+	"Extract enable attribute": {
+		"prefix": "extracten",
+		"body": ["(* extract_enable = \"${1|yes,no|}\" *) reg ${2:q};"],
+		"description": "extract_enable · 控制是否将逻辑推断为触发器时钟使能端"
+	},
+	"Extract reset attribute": {
+		"prefix": "extractrst",
+		"body": ["(* extract_reset = \"${1|yes,no|}\" *) reg ${2:q};"],
+		"description": "extract_reset · 控制是否将逻辑推断为触发器同步复位端"
+	},
+	"Retiming attribute": {
+		"prefix": "retiming",
+		"body": ["(* retiming_${1|backward,forward|} = ${2:1} *) reg ${3:q};"],
+		"description": "retiming_backward / retiming_forward · 强制寄存器前后移动做重定时"
+	},
+
+	"IO buffer type attribute": {
+		"prefix": "iobuf",
+		"body": ["(* io_buffer_type = \"${1|IBUF,OBUF,none|}\" *) ${2|input,output|} wire ${3:pin};"],
+		"description": "io_buffer_type · 控制端口是否插入 IO 缓冲器"
+	},
+	"Clock buffer type attribute": {
+		"prefix": "clkbuf",
+		"body": ["(* clock_buffer_type = \"${1|BUFG,BUFH,BUFGCE,BUFR,IBUFG,none|}\" *) input wire ${2:clk};"],
+		"description": "clock_buffer_type · 指定时钟端口使用的全局缓冲器类型"
+	},
+	"IOB attribute": {
+		"prefix": "iob",
+		"body": ["(* IOB = \"${1|TRUE,FALSE|}\" *) reg ${2:q};"],
+		"description": "IOB · 要求把寄存器打包进 IO 块，改善建立/保持时间"
+	},
+
+	"Black box attribute": {
+		"prefix": "blackbox",
+		"body": [
+			"(* black_box *)",
+			"module ${1:name} (",
+			"\tinput  wire clk,",
+			"\tinput  wire rst_n",
+			");",
+			"endmodule"
+		],
+		"description": "black_box · 将模块视为黑盒，不做综合（由网表/IP 提供实现）"
+	},
+	"Translate off / on": {
+		"prefix": "xlateoff",
+		"body": [
+			"// synthesis translate_off",
+			"$0",
+			"// synthesis translate_on"
+		],
+		"description": "translate_off / translate_on · 综合忽略该段，仅仿真可见"
+	},
+	"Full case parallel case": {
+		"prefix": "fullcase",
+		"body": [
+			"case (${1:sel}) // synthesis full_case parallel_case",
+			"\t${2:2'b00}: ${3:out = 1'b0;}",
+			"\t${4:2'b01}: ${5:out = 1'b1;}",
+			"endcase"
+		],
+		"description": "full_case / parallel_case · 综合指令，谨慎使用以免仿真与综合不一致"
+	}
+}

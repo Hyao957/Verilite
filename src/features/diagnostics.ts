@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
-import { LANGUAGE_ID, readConfig } from "../config";
-import { lint } from "../engine/lint";
+import type { Dialect } from "../core/types";
+import { readConfig } from "../config";
+import { lintLexed } from "../engine/lint";
 import type { LintIssue, LintSeverity } from "../engine/lint";
+import type { AnalysisService } from "./analysis";
 
 const SEVERITY_MAP: Record<LintSeverity, vscode.DiagnosticSeverity> = {
 	error: vscode.DiagnosticSeverity.Error,
@@ -35,16 +37,21 @@ export class DiagnosticsController implements vscode.Disposable {
 	private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
 	private readonly disposables: vscode.Disposable[] = [];
 
-	constructor() {
-		this.collection = vscode.languages.createDiagnosticCollection("verilite");
+	constructor(
+		private readonly dialect: Dialect,
+		private readonly analysis: AnalysisService,
+	) {
+		this.collection = vscode.languages.createDiagnosticCollection(`verilite-${dialect}`);
 
 		this.disposables.push(
 			vscode.workspace.onDidOpenTextDocument((doc) => this.schedule(doc, true)),
 			vscode.workspace.onDidChangeTextDocument((e) => {
-				if (readConfig(e.document.uri).lintRunOn === "type") this.schedule(e.document, false);
+				if (e.document.languageId !== this.dialect) return;
+				if (readConfig(e.document).lintRunOn === "type") this.schedule(e.document, false);
 			}),
 			vscode.workspace.onDidSaveTextDocument((doc) => {
-				const runOn = readConfig(doc.uri).lintRunOn;
+				if (doc.languageId !== this.dialect) return;
+				const runOn = readConfig(doc).lintRunOn;
 				if (runOn === "type" || runOn === "save") this.schedule(doc, true);
 			}),
 			vscode.workspace.onDidCloseTextDocument((doc) => this.forget(doc)),
@@ -74,7 +81,11 @@ export class DiagnosticsController implements vscode.Disposable {
 	}
 
 	private schedule(document: vscode.TextDocument, immediate: boolean): void {
-		if (document.languageId !== LANGUAGE_ID) return;
+		if (document.languageId !== this.dialect) {
+			// document no longer belongs to this dialect (e.g. language-mode switch)
+			this.collection.delete(document.uri);
+			return;
+		}
 
 		const key = document.uri.toString();
 		this.cancel(key);
@@ -84,7 +95,7 @@ export class DiagnosticsController implements vscode.Disposable {
 			return;
 		}
 
-		const delay = readConfig(document.uri).lintDebounceMs;
+		const delay = readConfig(document).lintDebounceMs;
 		this.timers.set(
 			key,
 			setTimeout(() => {
@@ -95,16 +106,16 @@ export class DiagnosticsController implements vscode.Disposable {
 	}
 
 	private run(document: vscode.TextDocument): void {
-		if (document.languageId !== LANGUAGE_ID || document.isClosed) return;
+		if (document.languageId !== this.dialect || document.isClosed) return;
 
-		const config = readConfig(document.uri);
+		const config = readConfig(document);
 		if (!config.lintEnabled) {
 			this.collection.delete(document.uri);
 			return;
 		}
 
 		try {
-			const { issues } = lint(document.getText(), config.lint);
+			const { issues } = lintLexed(this.analysis.analyze(document).lexed, config.lint, this.dialect);
 			this.collection.set(
 				document.uri,
 				issues.map((issue) => toDiagnostic(document, issue)),

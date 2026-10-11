@@ -1,7 +1,8 @@
+import { indentPairsFor } from "../../core/keywords";
 import { lex } from "../../core/lexer";
-import type { Token } from "../../core/types";
+import type { Dialect, Token } from "../../core/types";
 import { applyAlignment } from "./align";
-import { planIndent, SINGLE_STATEMENT_HEADS } from "./indent";
+import { planIndent } from "./indent";
 import { applySpacing } from "./spacing";
 import { DEFAULT_FORMAT_OPTIONS, indentUnit } from "./types";
 import type { FormatOptions } from "./types";
@@ -11,12 +12,12 @@ export { DEFAULT_FORMAT_OPTIONS } from "./types";
 export { planIndent } from "./indent";
 
 /** True when a code line is a control head whose body may absorb a following `begin`. */
-function lineIsControlHead(toks: Token[]): boolean {
+function lineIsControlHead(toks: Token[], heads: Set<string>): boolean {
 	if (toks.length === 0) return false;
 	const first = toks[0];
 	const last = toks[toks.length - 1];
 	if (last.lower === "else" || last.lower === "forever" || last.lower === "initial") return true;
-	return last.text === ")" && SINGLE_STATEMENT_HEADS.has(first.lower);
+	return last.text === ")" && heads.has(first.lower);
 }
 
 /**
@@ -27,10 +28,11 @@ function lineIsControlHead(toks: Token[]): boolean {
  * paren-balanced head is touched, so the transform is conservative. It strictly
  * reduces the number of lone `begin` lines, hence it terminates and idempotent.
  */
-function joinBegin(text: string): string {
-	const lexed = lex(text);
+function joinBegin(text: string, dialect: Dialect): string {
+	const lexed = lex(text, dialect);
 	const raw = lexed.rawLines.slice();
 	const remove = new Set<number>();
+	const heads = indentPairsFor(dialect).singleStatementHeads;
 
 	for (let i = 1; i < raw.length; i++) {
 		if (lexed.lineKinds[i] !== "code") continue;
@@ -39,13 +41,56 @@ function joinBegin(text: string): string {
 		if (remove.has(j)) continue;
 		if (lexed.lineKinds[j] !== "code") continue;
 		if ((lexed.parenDepthAtLineStart[i] ?? 0) !== 0) continue;
-		if (!lineIsControlHead(lexed.tokensByLine[j] ?? [])) continue;
+		if (!lineIsControlHead(lexed.tokensByLine[j] ?? [], heads)) continue;
 		raw[j] = raw[j].replace(/\s+$/, "") + " begin";
 		remove.add(i);
 	}
 
 	if (remove.size === 0) return text;
 	return raw.filter((_, idx) => !remove.has(idx)).join("\n");
+}
+
+/**
+ * Remove blank lines from between consecutive instance port connections.
+ * A line is an instance port when it matches `.name (value)` or `.name (value),`.
+ * Comment lines break the run (they are preserved), but blank lines within a
+ * run of consecutive ports are removed.
+ */
+function compactInstancePorts(lines: string[]): string[] {
+	const result: string[] = [];
+	let i = 0;
+	while (i < lines.length) {
+		const line = lines[i];
+		const trimmed = line.trim();
+		// Check if this is a potential instance port connection
+		if (/^\s*\.\w+\s*\(/.test(trimmed)) {
+			const portLines: string[] = [line];
+			let j = i + 1;
+			while (j < lines.length) {
+				const next = lines[j];
+				const nextTrimmed = next.trim();
+				if (nextTrimmed === "") {
+					j++;
+					continue; // skip blank lines within the port block
+				}
+				if (/^\s*\.\w+\s*\(/.test(nextTrimmed)) {
+					portLines.push(next);
+					j++;
+				} else {
+					break; // comment or other code line breaks the run
+				}
+			}
+			if (portLines.length >= 2) {
+				// Only compact when there are at least 2 port lines
+				result.push(...portLines);
+				i = j;
+				continue;
+			}
+		}
+		result.push(line);
+		i++;
+	}
+	return result;
 }
 
 /**
@@ -63,18 +108,25 @@ export function formatText(
 	text: string,
 	options: Partial<FormatOptions> = {},
 	startLevel = 0,
+	dialect: Dialect = "verilog",
 ): string {
 	const opts: FormatOptions = { ...DEFAULT_FORMAT_OPTIONS, ...options };
+
+	// Pre-processing: remove blank lines inside instance port blocks
+	let cleaned = text;
+	if (opts.alignInstancePorts) {
+		cleaned = compactInstancePorts(text.split("\n")).join("\n");
+	}
 
 	// pass 0 (opt-in): join a lone `begin` up onto its control head, then
 	// re-format the merged text. joinBegin is idempotent, so this recurses once.
 	if (opts.joinBegin) {
-		const joined = joinBegin(text);
-		if (joined !== text) return formatText(joined, options, startLevel);
+		const joined = joinBegin(cleaned, dialect);
+		if (joined !== cleaned) return formatText(joined, options, startLevel, dialect);
 	}
 
-	const lexed = lex(text);
-	const plan = planIndent(lexed, startLevel);
+	const lexed = lex(cleaned, dialect);
+	const plan = planIndent(lexed, startLevel, dialect);
 
 	// ---- pass 2: spacing -------------------------------------------------
 	const spaced: string[] = [];
@@ -101,8 +153,17 @@ export function formatText(
 
 	// ---- pass 3: alignment ----------------------------------------------
 	let aligned = spaced;
-	if (opts.alignPorts || opts.alignAssignments || opts.alignIfElse) {
-		const relexed = lex(spaced.join("\n"));
+	if (
+		opts.alignPorts ||
+		opts.alignAssignments ||
+		opts.alignIfElse ||
+		opts.alignDeclarations ||
+		opts.alignParams ||
+		opts.alignDeclAssignments ||
+		opts.alignInstancePorts ||
+			opts.alignBlockAssignments
+	) {
+		const relexed = lex(spaced.join("\n"), dialect);
 		const commentStarts = spaced.map((line, i) => {
 			const ranges = relexed.protectedRanges[i] ?? [];
 			for (const [start] of ranges) {
@@ -112,12 +173,18 @@ export function formatText(
 			return null;
 		});
 		aligned = applyAlignment({
+			dialect,
 			lines: spaced,
 			commentStarts,
 			tokensByLine: relexed.tokensByLine,
 			alignPorts: opts.alignPorts,
 			alignAssignments: opts.alignAssignments,
 			alignIfElse: opts.alignIfElse,
+			alignDeclarations: opts.alignDeclarations,
+			alignParams: opts.alignParams,
+			alignDeclAssignments: opts.alignDeclAssignments,
+			alignInstancePorts: opts.alignInstancePorts,
+			alignBlockAssignments: opts.alignBlockAssignments,
 		});
 	}
 
@@ -128,6 +195,7 @@ export function formatText(
 		return indentUnit(opts, plan.levels[i]) + line;
 	});
 
+
 	return out.join("\n");
 }
 
@@ -136,9 +204,9 @@ export function formatText(
  * Formatting a selection without this makes every selected line jump to
  * column 0, which is the single most common bug in HDL formatters.
  */
-export function computeStartLevel(textBeforeSelection: string): number {
+export function computeStartLevel(textBeforeSelection: string, dialect: Dialect = "verilog"): number {
 	if (textBeforeSelection.length === 0) return 0;
-	return planIndent(lex(textBeforeSelection), 0).endLevel;
+	return planIndent(lex(textBeforeSelection, dialect), 0, dialect).endLevel;
 }
 
 /** Format only part of a document, preserving the surrounding indent context. */
@@ -147,8 +215,9 @@ export function formatSlice(
 	sliceStartOffset: number,
 	sliceEndOffset: number,
 	options: Partial<FormatOptions> = {},
+	dialect: Dialect = "verilog",
 ): string {
 	const before = fullText.slice(0, sliceStartOffset);
 	const slice = fullText.slice(sliceStartOffset, sliceEndOffset);
-	return formatText(slice, options, computeStartLevel(before));
+	return formatText(slice, options, computeStartLevel(before, dialect), dialect);
 }

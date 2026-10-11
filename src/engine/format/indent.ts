@@ -1,5 +1,5 @@
-import { INDENT_CLOSERS, INDENT_OPENERS } from "../../core/keywords";
-import type { LexResult } from "../../core/types";
+import { indentPairsFor } from "../../core/keywords";
+import type { Dialect, LexResult, Token } from "../../core/types";
 
 export interface IndentPlan {
 	/** indent level per line; -1 means "leave the raw line untouched" */
@@ -8,8 +8,16 @@ export interface IndentPlan {
 	endLevel: number;
 }
 
-function isCloserToken(text: string, lower: string): boolean {
-	return INDENT_CLOSERS.has(lower) || text === ")" || text === "}";
+function isCloserToken(text: string, lower: string, closers: Set<string>): boolean {
+	return closers.has(lower) || text === ")" || text === "}";
+}
+
+function isSubprogramPrototype(tokens: Token[], index: number): boolean {
+	for (let i = index - 1; i >= 0; i--) {
+		if (tokens[i].text === ";") break;
+		if (["extern", "pure", "import", "export"].includes(tokens[i].lower)) return true;
+	}
+	return false;
 }
 
 /**
@@ -30,23 +38,13 @@ function nextCodeLineStartsBlock(lexed: LexResult, from: number): boolean {
 }
 
 /**
- * Statement heads that indent a following single statement when they are not
- * followed by `begin`.
- */
-export const SINGLE_STATEMENT_HEADS = new Set([
-	"if", "else", "for", "while", "repeat",
-	"always", "always_ff", "always_comb", "always_latch",
-]);
-
-/**
  * Pass 1 of the formatter: work out an indent level for every line.
  *
  * Three things beyond plain bracket counting:
  *
- * 1. `module` is NOT treated as a normal opener. The body indent is raised by
- *    the `;` that terminates the port list, so both `module foo;` and the
- *    multi-line `module foo #( ... ) ( ... );` form end up with exactly one
- *    level of body indent instead of two.
+ * 1. Design declarations with optional port lists are not normal openers. The
+ *    body indent is raised by the terminating `;`, so a multi-line header does
+ *    not add both a block indent and a hanging-parenthesis indent.
  *
  * 2. Single-statement bodies. `if (cond)` on its own line indents the next
  *    statement by one level and then returns, without any begin/end.
@@ -54,10 +52,12 @@ export const SINGLE_STATEMENT_HEADS = new Set([
  * 3. Hanging indent. A line whose statement is unfinished (it ends with `,`
  *    or a binary operator) indents its continuation lines by one level.
  */
-export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
+export function planIndent(lexed: LexResult, startLevel = 0, dialect: Dialect = "verilog"): IndentPlan {
+	const pairs = indentPairsFor(dialect);
+	const closers = pairs.indentClosers;
 	const levels: number[] = [];
 	let level = startLevel;
-	let pendingModuleHeader = false;
+	let pendingDesignHeader = false;
 	let hanging = 0;
 	/** running depth of block keywords (begin/case/fork/...), excluding parens */
 	let blockDepth = 0;
@@ -91,7 +91,7 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 
 		let closeAtStart = 0;
 		for (const t of toks) {
-			if (isCloserToken(t.text, t.lower)) closeAtStart++;
+			if (isCloserToken(t.text, t.lower, closers)) closeAtStart++;
 			else break;
 		}
 
@@ -119,23 +119,27 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 				continue;
 			}
 			if (t.text === ";") {
-				if (parens <= 0 && pendingModuleHeader) {
+				if (parens <= 0 && pendingDesignHeader) {
 					extraAfter++;
-					pendingModuleHeader = false;
+					pendingDesignHeader = false;
 				}
 				continue;
 			}
 			if (t.kind !== "keyword") continue;
 
-			if (t.lower === "module" || t.lower === "macromodule") {
-				pendingModuleHeader = true;
+			if (["module", "macromodule", "interface", "program", "checker"].includes(t.lower)) {
+				pendingDesignHeader = true;
 				continue;
 			}
 			if (t.lower === "fork" && (prev === "disable" || prev === "wait")) continue;
-			if (INDENT_OPENERS.has(t.lower)) {
+			if (
+				(t.lower === "function" || t.lower === "task") &&
+				isSubprogramPrototype(toks, k)
+			) continue;
+			if (pairs.indentOpeners.has(t.lower)) {
 				opens++;
 				blockOpens++;
-			} else if (INDENT_CLOSERS.has(t.lower)) {
+			} else if (pairs.indentClosers.has(t.lower)) {
 				closes++;
 				blockCloses++;
 			}
@@ -175,7 +179,7 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 		const opensSingleStatement =
 			depthAtEnd === 0 &&
 			opens === closes &&
-			((last.text === ")" && SINGLE_STATEMENT_HEADS.has(first.lower)) ||
+			((last.text === ")" && pairs.singleStatementHeads.has(first.lower)) ||
 				last.lower === "else" ||
 				last.lower === "forever" ||
 				last.lower === "initial") &&
@@ -193,6 +197,6 @@ export function planIndent(lexed: LexResult, startLevel = 0): IndentPlan {
 }
 
 /** Indent level that a new line appended after `text` would get. */
-export function endLevelOf(lexed: LexResult, startLevel = 0): number {
-	return planIndent(lexed, startLevel).endLevel;
+export function endLevelOf(lexed: LexResult, startLevel = 0, dialect: Dialect = "verilog"): number {
+	return planIndent(lexed, startLevel, dialect).endLevel;
 }

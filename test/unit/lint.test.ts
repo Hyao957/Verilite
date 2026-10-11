@@ -172,3 +172,87 @@ test("issue list is capped by maxIssues", () => {
 test("empty input does not crash", () => {
 	assert.deepEqual(lint("").issues, []);
 });
+
+test("randcase does not desync the case-without-default frames", () => {
+	const src = [
+		"module tb;", // 0
+		"  initial begin", // 1
+		"    case (a)", // 2
+		"      1: begin", // 3
+		"           randcase", // 4
+		"             1: x = 0;", // 5
+		"           endcase", // 6
+		"         end", // 7
+		"    endcase", // 8
+		"  end", // 9
+		"endmodule", // 10
+	].join("\n");
+
+	assert.deepEqual(
+		lint(src, {}, "systemverilog").issues.map((i) => i.code + "@" + i.line),
+		["case-without-default@2"],
+	);
+});
+
+test("a randcase without a default branch is not flagged", () => {
+	const src = [
+		"module tb;",
+		"  initial begin",
+		"    randcase",
+		"      1: x = 0;",
+		"    endcase",
+		"  end",
+		"endmodule",
+	].join("\n");
+
+	assert.deepEqual(lint(src, {}, "systemverilog").issues, []);
+});
+
+test("unique/priority case without default is still flagged", () => {
+	const unique = "module m;\n  always_comb unique case (s)\n    1: y = 1;\n  endcase\nendmodule\n";
+	const priority = "module m;\n  always_comb priority case (s)\n    1: y = 1;\n  endcase\nendmodule\n";
+	assert.ok(lint(unique, {}, "systemverilog").issues.some((i) => i.code === "case-without-default"));
+	assert.ok(lint(priority, {}, "systemverilog").issues.some((i) => i.code === "case-without-default"));
+});
+
+test("always_comb / always_latch with a sensitivity list is flagged in SV only", () => {
+	const comb = "module m;\n  always_comb @(*) begin\n    y = a;\n  end\nendmodule\n";
+	const latch = "module m;\n  always_latch @(a or b) y = a & b;\nendmodule\n";
+	const code = "sv-always-sensitivity";
+
+	assert.ok(lint(comb, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(lint(latch, {}, "systemverilog").issues.some((i) => i.code === code));
+	// `.v` files never see the SystemVerilog-only rule.
+	assert.ok(!lint(comb, {}, "verilog").issues.some((i) => i.code === code));
+	assert.ok(!lint(latch, {}, "verilog").issues.some((i) => i.code === code));
+});
+
+test("always_comb without a sensitivity list is fine", () => {
+	const src = "module m;\n  always_comb begin\n    y = a & b;\n  end\nendmodule\n";
+	assert.ok(!lint(src, {}, "systemverilog").issues.some((i) => i.code === "sv-always-sensitivity"));
+});
+
+test("always_ff must use an explicit edge, never '*'", () => {
+	const code = "sv-always-sensitivity";
+	const bare = "module m;\n  always_ff @* q <= d;\nendmodule\n";
+	const paren = "module m;\n  always_ff @(*) q <= d;\nendmodule\n";
+	const good = "module m;\n  always_ff @(posedge clk) q <= d;\nendmodule\n";
+
+	assert.ok(lint(bare, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(lint(paren, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(!lint(good, {}, "systemverilog").issues.some((i) => i.code === code));
+});
+
+test("endclass / endinterface / endpackage label must match the declaration", () => {
+	const bad = "class c;\nendclass : d\n";
+	const badIface = "interface bus;\nendinterface : other\n";
+	const good = "class c;\nendclass : c\n";
+	const plain = "class c;\nendclass\n";
+	const code = "sv-end-label";
+
+	assert.ok(lint(bad, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(lint(badIface, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(!lint(good, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(!lint(plain, {}, "systemverilog").issues.some((i) => i.code === code));
+	assert.ok(!lint(bad, {}, "verilog").issues.some((i) => i.code === code));
+});

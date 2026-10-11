@@ -8,6 +8,16 @@ export interface FormatOptions {
 	joinBegin: boolean;
 	/** column-align the bodies of single-statement if / else-if / else chains */
 	alignIfElse: boolean;
+	/** column-align consecutive net / variable declarations (`wire`/`reg`/`logic`/...) */
+	alignDeclarations: boolean;
+	/** column-align the '=' of consecutive `parameter` / `localparam` initialisations */
+	alignParams: boolean;
+	/** column-align the '=' of consecutive initialized declarations (wire/reg/logic with =) */
+	alignDeclAssignments: boolean;
+	/** column-align .port_name(value) connections in module instantiations */
+	alignInstancePorts: boolean;
+	/** column-align consecutive assignments (<= / =) inside procedural blocks */
+	alignBlockAssignments: boolean;
 }
 
 export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
@@ -18,6 +28,11 @@ export const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
 	spaceAroundOperators: true,
 	joinBegin: true,
 	alignIfElse: true,
+	alignDeclarations: true,
+	alignParams: true,
+	alignDeclAssignments: true,
+	alignInstancePorts: true,
+	alignBlockAssignments: true,
 };
 
 export function indentUnit(options: FormatOptions, level: number): string {
